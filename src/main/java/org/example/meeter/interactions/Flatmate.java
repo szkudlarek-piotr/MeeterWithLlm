@@ -10,7 +10,7 @@ import org.example.meeter.*;
 @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Flatmate extends Interaction {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    private Human human;
+    @Setter private Human human;
     public Flatmate(String name, String description, LocalDate start, LocalDate end,
                     Human human, Collection<Human> people, Place home) {
         super(name, description, start.atStartOfDay(), end == null ? null : end.atStartOfDay(), people, home);

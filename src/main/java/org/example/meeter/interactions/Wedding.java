@@ -7,7 +7,7 @@ import lombok.*;
 import org.example.meeter.*;
 
 @Entity @Table(name = "weddings")
-@Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter @Setter @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Wedding extends Interaction {
     @ManyToOne(fetch = FetchType.LAZY, optional = false) private Human groom;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) private Human bride;

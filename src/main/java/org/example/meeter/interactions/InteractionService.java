@@ -128,6 +128,11 @@ public class InteractionService {
         Event event = new Event(name(input.details()), clean(input.details().longDesc()), input.startDate(), input.stopDate(),
             input.meComingDate(), input.meLeavingDate(), participants(input.details()), place(input.placeId()), clean(input.photoName()));
         event.setPlaceString(clean(input.placeString()));
+        setEventPhoto(event, input);
+        return save(event);
+    }
+
+    private void setEventPhoto(Event event, EventInput input) {
         int sources = (clean(input.photoUrl()) == null ? 0 : 1) + (clean(input.photoData()) == null ? 0 : 1) + (input.photoEventId() == null ? 0 : 1);
         if (sources > 1) throw bad("Wybierz jedno źródło zdjęcia.");
         if (input.photoEventId() != null) {
@@ -141,8 +146,8 @@ public class InteractionService {
             try { bytes = Base64.getDecoder().decode(input.photoData()); }
             catch (IllegalArgumentException exception) { throw bad("Nieprawidłowy plik zdjęcia."); }
             event.setPhotoFile(eventPhotos.store(bytes));
-        }
-        return save(event);
+        } else event.setPhotoFile(null);
+        event.setPhotoName(clean(input.photoName()));
     }
     @Transactional
     public View trip(TripInput input) {
@@ -172,6 +177,97 @@ public class InteractionService {
             groom, bride, place(input.ceremonyPlaceId()), place(input.partyPlaceId()), place(input.hotelId()), input.hadAfter());
         wedding.setWasIInvited(Boolean.TRUE.equals(input.wasIInvited()));
         return save(wedding);
+    }
+
+    private <T extends Interaction> T editable(Long id, Class<T> type, Details details) {
+        Interaction item = interactions.findLockedById(id).orElseThrow(() -> missing("interakcji"));
+        if (!item.getCreatedBy().getId().equals(account.id()) || !type.isInstance(item)) throw missing("interakcji");
+        if (!details.participantIds().isEmpty()) throw bad("Uczestników edytuj osobno w szczegółach interakcji.");
+        return type.cast(item);
+    }
+
+    // Imported references may be retained; assigning a different reference still requires ownership.
+    private Place editedPlace(Long id, Place existing) {
+        return existing != null && existing.getId().equals(id) ? existing : place(id);
+    }
+    private Human editedHuman(Long id, Human existing) {
+        return existing != null && existing.getId().equals(id) ? existing : human(id);
+    }
+    private void editCommon(Interaction item, Details details, LocalDateTime start, LocalDateTime end, Place place) {
+        dates(start, end);
+        item.edit(name(details), clean(details.longDesc()), start, end, place);
+    }
+    private View edited(Interaction item) {
+        interactions.flush();
+        return view(item);
+    }
+
+    @Transactional
+    public View editMeeting(Long id, MeetingInput input) {
+        Meeting item = editable(id, Meeting.class, input.details());
+        editCommon(item, input.details(), input.date().atStartOfDay(), input.date().atStartOfDay(), editedPlace(input.placeId(), item.getPlace()));
+        item.setPlaceString(clean(input.placeString()));
+        return edited(item);
+    }
+    @Transactional
+    public View editVisit(Long id, VisitInput input) {
+        Visit item = editable(id, Visit.class, input.details());
+        dates(input.visitDate(), input.visitDate());
+        editCommon(item, input.details(), input.visitDate(), input.visitDate().plusDays(input.duration() - 1L), editedPlace(input.placeId(), item.getPlace()));
+        item.setDuration(input.duration());
+        return edited(item);
+    }
+    @Transactional
+    public View editEvent(Long id, EventInput input) {
+        Event item = editable(id, Event.class, input.details());
+        LocalDateTime coming = input.meComingDate() == null ? input.startDate() : input.meComingDate();
+        LocalDateTime leaving = input.meLeavingDate() == null ? input.stopDate() : input.meLeavingDate();
+        dates(coming, leaving);
+        if (coming.isBefore(input.startDate()) || leaving.isAfter(input.stopDate()))
+            throw bad("Twój udział musi mieścić się w czasie trwania eventu.");
+        editCommon(item, input.details(), input.startDate(), input.stopDate(), editedPlace(input.placeId(), item.getPlace()));
+        item.setMeComingDate(input.meComingDate());
+        item.setMeLeavingDate(input.meLeavingDate());
+        item.setPlaceString(clean(input.placeString()));
+        setEventPhoto(item, input);
+        return edited(item);
+    }
+    @Transactional
+    public View editTrip(Long id, TripInput input) {
+        Citybreak item = editable(id, Citybreak.class, input.details());
+        Map<Long, Place> existing = new HashMap<>();
+        item.getPlaces().forEach(place -> existing.put(place.getId(), place));
+        List<Place> selected = input.placeIds().stream().map(placeId -> editedPlace(placeId, existing.get(placeId))).toList();
+        editCommon(item, input.details(), input.startDate(), input.endDate(), null);
+        item.editPlaces(selected, users.getReferenceById(account.id()));
+        return edited(item);
+    }
+    @Transactional
+    public View editFlatmate(Long id, FlatmateInput input) {
+        Flatmate item = editable(id, Flatmate.class, input.details());
+        if (input.humanId().equals(account.principal().humanId())) throw bad("Wybierz współlokatora innego niż Ty.");
+        Human roommate = editedHuman(input.humanId(), item.getHuman());
+        editCommon(item, input.details(), input.startDate().atStartOfDay(), input.stopDate() == null ? null : input.stopDate().atStartOfDay(), editedPlace(input.placeId(), item.getPlace()));
+        if (!roommate.getId().equals(item.getHuman().getId())) item.addParticipant(roommate, users.getReferenceById(account.id()));
+        item.setHuman(roommate);
+        return edited(item);
+    }
+    @Transactional
+    public View editWedding(Long id, WeddingInput input) {
+        Wedding item = editable(id, Wedding.class, input.details());
+        if (input.groomId().equals(input.brideId())) throw bad("Wybierz dwie różne osoby jako parę młodą.");
+        Map<Long, Human> couple = Map.of(item.getGroom().getId(), item.getGroom(), item.getBride().getId(), item.getBride());
+        Human groom = editedHuman(input.groomId(), couple.get(input.groomId()));
+        Human bride = editedHuman(input.brideId(), couple.get(input.brideId()));
+        editCommon(item, input.details(), input.dateTime(), input.dateTime(), null);
+        if (!couple.containsKey(groom.getId())) item.addParticipant(groom, users.getReferenceById(account.id()));
+        if (!couple.containsKey(bride.getId())) item.addParticipant(bride, users.getReferenceById(account.id()));
+        item.setGroom(groom); item.setBride(bride);
+        item.setCeremonyPlace(editedPlace(input.ceremonyPlaceId(), item.getCeremonyPlace()));
+        item.setPartyPlace(editedPlace(input.partyPlaceId(), item.getPartyPlace()));
+        item.setHotel(editedPlace(input.hotelId(), item.getHotel()));
+        item.setHadAfter(input.hadAfter()); item.setWasIInvited(Boolean.TRUE.equals(input.wasIInvited()));
+        return edited(item);
     }
 
     public View get(Long id) {

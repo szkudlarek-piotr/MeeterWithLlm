@@ -48,4 +48,17 @@ public class InteractionController {
     public View flatmate(@Valid @RequestBody FlatmateInput input) { return service.flatmate(input); }
     @PostMapping("/weddings") @ResponseStatus(HttpStatus.CREATED)
     public View wedding(@Valid @RequestBody WeddingInput input) { return service.wedding(input); }
+
+    @PutMapping("/meetings/{id}")
+    public View editMeeting(@PathVariable @Positive Long id, @Valid @RequestBody MeetingInput input) { return service.editMeeting(id, input); }
+    @PutMapping("/visits/{id}")
+    public View editVisit(@PathVariable @Positive Long id, @Valid @RequestBody VisitInput input) { return service.editVisit(id, input); }
+    @PutMapping("/events/{id}")
+    public View editEvent(@PathVariable @Positive Long id, @Valid @RequestBody EventInput input) { return service.editEvent(id, input); }
+    @PutMapping("/trips/{id}")
+    public View editTrip(@PathVariable @Positive Long id, @Valid @RequestBody TripInput input) { return service.editTrip(id, input); }
+    @PutMapping("/flatmates/{id}")
+    public View editFlatmate(@PathVariable @Positive Long id, @Valid @RequestBody FlatmateInput input) { return service.editFlatmate(id, input); }
+    @PutMapping("/weddings/{id}")
+    public View editWedding(@PathVariable @Positive Long id, @Valid @RequestBody WeddingInput input) { return service.editWedding(id, input); }
 }

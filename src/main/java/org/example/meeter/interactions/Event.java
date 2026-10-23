@@ -9,10 +9,10 @@ import org.example.meeter.*;
 @Entity @Table(name = "events")
 @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Event extends Interaction {
-    private LocalDateTime meComingDate;
-    private LocalDateTime meLeavingDate;
+    @Setter private LocalDateTime meComingDate;
+    @Setter private LocalDateTime meLeavingDate;
     @Column(length = 255)
-    private String photoName;
+    @Setter private String photoName;
     @Column(length = 200)
     @Setter private String placeString;
     @Setter private String photoFile;

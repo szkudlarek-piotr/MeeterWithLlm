@@ -13,7 +13,7 @@ public class Meeting extends Interaction {
         super(name, description, date.atStartOfDay(), date.atStartOfDay(), people, place);
         this.placeString = placeString;
     }
-    @Getter @Column(length = 200)
+    @Getter @Setter @Column(length = 200)
     private String placeString;
     @Override public InteractionType getType() { return InteractionType.MEETING; }
 }

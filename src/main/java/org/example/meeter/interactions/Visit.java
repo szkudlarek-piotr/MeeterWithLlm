@@ -9,7 +9,7 @@ import org.example.meeter.*;
 @Entity @Table(name = "visits")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Visit extends Interaction {
-    @Getter @Column(nullable = false)
+    @Getter @Setter @Column(nullable = false)
     private int duration;
     public Visit(String name, String description, LocalDateTime date, int duration, Collection<Human> people, Place place) {
         super(name, description, date, date.plusDays(duration - 1L), people, place);

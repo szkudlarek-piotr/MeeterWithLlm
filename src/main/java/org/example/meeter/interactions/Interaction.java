@@ -77,6 +77,14 @@ public abstract class Interaction extends OwnedEntity {
 
     public abstract InteractionType getType();
 
+    void edit(String name, String description, LocalDateTime start, LocalDateTime end, Place place) {
+        this.name = name;
+        this.longDesc = description;
+        this.startDate = start;
+        this.endDate = end;
+        this.place = place;
+    }
+
     public LocalDate getInteractionPointsDate() {
         return (endDate == null ? startDate : endDate).toLocalDate();
     }

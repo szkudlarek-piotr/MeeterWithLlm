@@ -29,4 +29,16 @@ public class Citybreak extends Interaction {
         new LinkedHashSet<>(places).forEach(place -> placeLinks.add(new TripPlace(this, place)));
     }
     @Override public InteractionType getType() { return InteractionType.TRIP; }
+
+    void editPlaces(Collection<Place> places, User editor) {
+        Set<Long> ids = new HashSet<>();
+        places.forEach(place -> ids.add(place.getId()));
+        placeLinks.removeIf(link -> !ids.contains(link.getPlace().getId()));
+        for (Place place : places) {
+            if (placeLinks.stream().anyMatch(link -> link.getPlace().getId().equals(place.getId()))) continue;
+            TripPlace link = new TripPlace(this, place);
+            link.recordCreator(editor);
+            placeLinks.add(link);
+        }
+    }
 }
