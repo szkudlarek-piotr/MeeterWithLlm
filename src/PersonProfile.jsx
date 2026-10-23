@@ -30,7 +30,7 @@ function PhotoForm({ person, onSave }) {
         body = { photoData: data }
       }
       const saved = await api(`/people/${person.id}/photo`, { body })
-      onSave({ ...saved, profilePhotoUrl: saved.profilePhotoUrl?.replace('/api/people/', '/api/people/browse/') })
+      onSave({ ...saved, profilePhotoUrl: saved.profilePhotoUrl?.replace(/^\/api\/people\/(?!browse\/)/, '/api/people/browse/') })
       setNotice('Zapisano zdjęcie profilowe.')
     } catch (failure) { setError(failure.message) }
     finally { setBusy(false) }
@@ -50,29 +50,33 @@ export default function PersonProfile({ entry, onPersonChange }) {
   const [profile, setProfile] = useState(null)
   const [section, setSection] = useState('profile')
   const [page, setPage] = useState(0)
-  const [data, setData] = useState(null)
+  const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [retry, setRetry] = useState(0)
   const [profileError, setProfileError] = useState('')
+  const requestKey = `${person.id}:${section}:${page}:${retry}`
+  const data = result?.key === requestKey ? result.data : null
   useEffect(() => {
     const controller = new AbortController()
     setProfileError('')
-    api(`/people/browse/${person.id}`, { signal: controller.signal }).then(value => { setProfile(value); setPerson(value.person) })
+    api(`/people/browse/${person.id}`, { signal: controller.signal }).then(value => { if (!controller.signal.aborted) { setProfile(value); setPerson(value.person) } })
       .catch(failure => { if (!controller.signal.aborted) setProfileError(failure.message) })
     return () => controller.abort()
   }, [person.id, retry])
   useEffect(() => {
-    setData(null); setError('')
+    setResult(null); setError('')
     if (section === 'profile') return
     const controller = new AbortController()
     setLoading(true)
     const path = section === 'map' ? 'map' : section === 'quotes' ? `quotes?page=${page}` : `interactions?type=${section}&page=${page}`
-    api(`/people/browse/${person.id}/${path}`, { signal: controller.signal }).then(setData)
+    api(`/people/browse/${person.id}/${path}`, { signal: controller.signal }).then(value => {
+      if (!controller.signal.aborted) setResult({ key: requestKey, data: value })
+    })
       .catch(failure => { if (!controller.signal.aborted) setError(failure.message) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [person.id, section, page, retry])
+  }, [person.id, section, page, retry, requestKey])
   return <>
     <div className="person-detail-heading"><PersonAvatar person={person} /><h2 id="person-detail-title">{person.fullName}</h2></div>
     <nav className="person-profile-tabs" aria-label="Szczegóły osoby">{sections.map(([key, label]) => <button key={key} type="button" aria-current={section === key ? 'page' : undefined} onClick={() => { setSection(key); setPage(0) }}>{label}</button>)}</nav>
@@ -87,6 +91,8 @@ export default function PersonProfile({ entry, onPersonChange }) {
       </dl>
       {/^(https?:\/\/)/i.test(person.fbLink || '') && <a href={person.fbLink} target="_blank" rel="noopener noreferrer">Profil na Facebooku ↗</a>}
       {profile?.canEditPhoto && <PhotoForm person={person} onSave={saved => { setPerson(saved); onPersonChange(saved) }} />}
+      {profile && !profile.canEditPhoto && <p className="field-hint">Zdjęcie może zmienić właściciel rekordu osoby lub administrator.</p>}
+      {!profile && !profileError && <p role="status" className="field-hint">Sprawdzanie uprawnień do zmiany zdjęcia…</p>}
     </> : <>
       {loading && <p role="status">Wczytywanie…</p>}
       {error && <p className="field-error" role="alert">{error} <button onClick={() => setRetry(value => value + 1)}>Spróbuj ponownie</button></p>}

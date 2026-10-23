@@ -5,6 +5,7 @@ import { placesCategoriesDict } from './PlacesCategoriesDict.js'
 
 const normalizeCategory = category => String(category ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pl-PL')
 const categoryIcons = new Map(Object.entries(placesCategoriesDict).map(([category, filename]) => [normalizeCategory(category), filename]))
+const placeLabel = place => [place.name, place.category?.trim()].filter(Boolean).join(' · ')
 
 function categoryMarker(place) {
   const filename = categoryIcons.get(normalizeCategory(place.category))
@@ -22,7 +23,7 @@ function categoryMarker(place) {
   }, { once: true })
   content.append(image)
   return L.marker([place.latitude, place.longitude], {
-    title: place.name, alt: place.name,
+    title: placeLabel(place), alt: placeLabel(place),
     icon: L.divIcon({ html: content, className: 'place-category-marker', iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -20], tooltipAnchor: [20, 0] }),
   })
 }
@@ -33,7 +34,8 @@ const validPoint = place => Number.isFinite(place.latitude) && Number.isFinite(p
 export default function TripMap({ places = [], title = 'Miejsca na trasie', emptyMessage = 'Dodaj miejsca ze współrzędnymi, aby zobaczyć mapę podróży.' }) {
   const container = useRef(null)
   const [tileError, setTileError] = useState(false)
-  const points = places.filter(validPoint)
+  const uniquePlaces = [...new Map(places.map(place => [place.id, place])).values()]
+  const points = uniquePlaces.filter(validPoint)
   const signature = JSON.stringify(points.map(({ id, name, latitude, longitude, category }) => ({ id, name, latitude, longitude, category })))
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export default function TripMap({ places = [], title = 'Miejsca na trasie', empt
     tiles.on('tileerror', () => setTileError(true))
     locations.forEach(place => {
       const label = document.createElement('span')
-      label.textContent = place.name
+      label.textContent = placeLabel(place)
       categoryMarker(place).addTo(map).bindTooltip(label).bindPopup(label.cloneNode(true))
     })
     const bounds = L.latLngBounds(locations.map(place => [place.latitude, place.longitude]))
@@ -69,6 +71,6 @@ export default function TripMap({ places = [], title = 'Miejsca na trasie', empt
       <div ref={container} className="trip-map" role="region" aria-label={title} />
       {tileError && <p className="field-hint" role="status">Nie udało się pobrać części mapy. Miejsca znajdziesz na liście poniżej.</p>}
     </> : <p className="field-hint">{emptyMessage}</p>}
-    {places.length > 0 && <ul className="trip-map-places">{places.map(place => <li key={place.id}>{place.name}</li>)}</ul>}
+    {uniquePlaces.length > 0 && <ul className="trip-map-places">{uniquePlaces.map(place => <li key={place.id}>{placeLabel(place)}</li>)}</ul>}
   </section>
 }
