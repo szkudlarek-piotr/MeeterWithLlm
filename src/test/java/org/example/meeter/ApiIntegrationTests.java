@@ -106,6 +106,101 @@ class ApiIntegrationTests {
         return Long.parseLong(match.group(1));
     }
 
+    @Test void editsAllInteractionTypesWithoutReplacingIdentityOrRelationshipMetadata() throws Exception {
+        long person = id(request("POST", "/people", "{\"name\":\"Uczestnik\"}"));
+        long bride = id(request("POST", "/people", "{\"name\":\"Panna młoda\"}"));
+        long place = id(request("POST", "/places", "{\"name\":\"Miejsce\",\"latitude\":52,\"longitude\":21}"));
+        String details = "\"details\":{\"name\":\"Przed edycją\",\"longDesc\":\"Opis\",\"participantIds\":[]}";
+        String[] endpoints = {"meetings", "visits", "events", "trips", "flatmates", "weddings"};
+        String[] fields = {
+            "\"date\":\"2026-10-10\",\"placeId\":" + place + ",\"placeString\":\"Opis miejsca\"",
+            "\"visitDate\":\"2026-10-10T18:00:17\",\"duration\":3,\"placeId\":" + place,
+            "\"startDate\":\"2026-10-10T18:00:17\",\"stopDate\":\"2026-10-11T20:00:00\",\"meComingDate\":\"2026-10-10T19:00:00\",\"placeId\":" + place,
+            "\"startDate\":\"2026-10-10T18:00:17\",\"endDate\":\"2026-10-11T20:00:00\",\"placeIds\":[" + place + "]",
+            "\"startDate\":\"2026-10-10\",\"humanId\":" + person + ",\"placeId\":" + place,
+            "\"dateTime\":\"2026-10-10T18:00:17\",\"groomId\":" + person + ",\"brideId\":" + bride + ",\"ceremonyPlaceId\":" + place + ",\"hadAfter\":true,\"wasIInvited\":true"
+        };
+        for (int index = 0; index < endpoints.length; index++) {
+            String path = "/" + endpoints[index];
+            String body = "{" + details + "," + fields[index] + "}";
+            var created = request("POST", path, body);
+            long interactionId = id(created);
+            var before = json.readTree(created.body());
+            var links = jdbc.queryForList("select id, human_id, created_at, created_by_id from interaction_human where interaction_id=? order by id", interactionId);
+            var route = jdbc.queryForList("select id, place_id, created_at, created_by_id from trip_place where trip_id=? order by id", interactionId);
+            var updated = request("PUT", path + "/" + interactionId, body.replace("Przed edycją", "Po edycji").replace("Opis\"", "Nowy opis\""));
+            assertEquals(200, updated.statusCode(), updated.body());
+            var after = json.readTree(updated.body());
+            assertEquals("Po edycji", after.get("name").asString());
+            for (String field : java.util.List.of("id", "uuid", "createdAt", "startDate", "endDate", "details", "participants", "place"))
+                assertEquals(before.get(field), after.get(field), path + " " + field);
+            assertEquals(links, jdbc.queryForList("select id, human_id, created_at, created_by_id from interaction_human where interaction_id=? order by id", interactionId));
+            assertEquals(route, jdbc.queryForList("select id, place_id, created_at, created_by_id from trip_place where trip_id=? order by id", interactionId));
+        }
+        assertEquals(6, interactions.count());
+    }
+
+    @Test void editsValidateOwnershipDatesAndCsrfAndRetainExplicitParticipantRemoval() throws Exception {
+        String body = "{\"details\":{\"name\":\"Pierwotna nazwa\",\"participantIds\":[]},\"date\":\"2026-10-10\"}";
+        long meeting = id(request("POST", "/meetings", body));
+        var deletion = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/interactions/" + meeting + "/participants/" + owner.getHuman().getId()))
+            .header("X-XSRF-TOKEN", csrf).DELETE().build();
+        assertEquals(204, client.send(deletion, HttpResponse.BodyHandlers.discarding()).statusCode());
+        var update = request("PUT", "/meetings/" + meeting, body.replace("2026-10-10", "2026-10-12"));
+        assertEquals(200, update.statusCode(), update.body());
+        assertEquals(0, json.readTree(update.body()).get("participants").size());
+        assertEquals("2026-10-12T00:00:00", json.readTree(update.body()).get("startDate").asString());
+        assertEquals(404, request("PUT", "/visits/" + meeting, "{\"details\":{\"name\":\"Inny typ\",\"participantIds\":[]},\"visitDate\":\"2026-10-10T18:00:00\",\"duration\":1}").statusCode());
+        assertEquals(404, request("PUT", "/meetings/999999", body).statusCode());
+        assertEquals(400, request("PUT", "/meetings/" + meeting, body.replace("[]", "[" + owner.getHuman().getId() + "]")).statusCode());
+        assertEquals(404, request("PUT", "/meetings/" + meeting, body.replace("\"date\"", "\"placeId\":999999,\"date\"")).statusCode());
+        var noCsrf = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/meetings/" + meeting))
+            .header("Content-Type", "application/json").PUT(HttpRequest.BodyPublishers.ofString(body)).build();
+        assertEquals(403, client.send(noCsrf, HttpResponse.BodyHandlers.discarding()).statusCode());
+        assertEquals(401, HttpClient.newHttpClient().send(noCsrf, HttpResponse.BodyHandlers.discarding()).statusCode());
+        Human foreign = people.save(new Human("Obcy", "Autor", null, null, null, null, null, null));
+        User other = users.save(new User("interaction-edit-other", encoder.encode("other-password-1234"), foreign));
+        foreign.assignOwner(other); people.save(foreign);
+        var otherMeeting = new Meeting("Obca interakcja", null, java.time.LocalDate.of(2026,10,10), java.util.List.of(foreign), null, null);
+        otherMeeting.assignOwner(other); interactions.saveAndFlush(otherMeeting);
+        assertEquals(404, request("PUT", "/meetings/" + otherMeeting.getId(), body).statusCode());
+        owner.grantRole(org.example.meeter.auth.Role.ROLE_ADMIN); users.saveAndFlush(owner);
+        assertEquals(404, request("PUT", "/meetings/" + otherMeeting.getId(), body).statusCode());
+    }
+
+    @Test void tripEditsPreserveRetainedLinksAndEventEditsAreAtomicWithSharedPhotos() throws Exception {
+        long firstPlace = id(request("POST", "/places", "{\"name\":\"Pierwsze miejsce\",\"latitude\":52,\"longitude\":21}"));
+        long secondPlace = id(request("POST", "/places", "{\"name\":\"Drugie miejsce\",\"latitude\":51,\"longitude\":20}"));
+        String tripBody = "{\"details\":{\"name\":\"Podróż\",\"participantIds\":[]},\"startDate\":\"2026-10-10T18:00:00\",\"endDate\":\"2026-10-11T20:00:00\",\"placeIds\":[" + firstPlace + "]}";
+        long trip = id(request("POST", "/trips", tripBody));
+        var originalLink = jdbc.queryForMap("select id,created_at,created_by_id from trip_place where trip_id=? and place_id=?", trip, firstPlace);
+        String expanded = tripBody.replace("[" + firstPlace + "]", "[" + firstPlace + "," + secondPlace + "]");
+        assertEquals(200, request("PUT", "/trips/" + trip, expanded).statusCode());
+        assertEquals(originalLink, jdbc.queryForMap("select id,created_at,created_by_id from trip_place where trip_id=? and place_id=?", trip, firstPlace));
+        assertEquals(owner.getId(), jdbc.queryForObject("select created_by_id from trip_place where trip_id=? and place_id=?", Long.class, trip, secondPlace));
+        assertEquals(200, request("PUT", "/trips/" + trip, tripBody.replace("[" + firstPlace + "]", "[" + secondPlace + "]")).statusCode());
+        assertEquals(2, places.count());
+        assertEquals(1, jdbc.queryForObject("select count(*) from trip_place where trip_id=?", Integer.class, trip));
+        assertEquals(400, request("PUT", "/trips/" + trip, tripBody.replace("2026-10-11T20:00:00", "2026-10-09T20:00:00")).statusCode());
+
+        var buffer = new ByteArrayOutputStream(); ImageIO.write(new BufferedImage(40,20,BufferedImage.TYPE_INT_RGB), "png", buffer);
+        String encoded = java.util.Base64.getEncoder().encodeToString(buffer.toByteArray());
+        String eventBase = "{\"details\":{\"name\":\"Wydarzenie\",\"participantIds\":[]},\"startDate\":\"2026-10-10T18:00:00\",\"stopDate\":\"2026-10-10T20:00:00\"";
+        long event = id(request("POST", "/events", eventBase + ",\"photoData\":\"" + encoded + "\"}"));
+        String originalFile = jdbc.queryForObject("select photo_file from events where id=?", String.class, event);
+        long reused = id(request("POST", "/events", eventBase + ",\"photoEventId\":" + event + "}"));
+        assertEquals(200, request("PUT", "/events/" + event, eventBase + ",\"photoEventId\":" + event + "}").statusCode());
+        assertEquals(originalFile, jdbc.queryForObject("select photo_file from events where id=?", String.class, event));
+        assertEquals(400, request("PUT", "/events/" + event, eventBase.replace("Wydarzenie", "Nie zapisuj") + ",\"photoData\":\"!invalid!\"}").statusCode());
+        assertEquals("Wydarzenie", json.readTree(request("GET", "/interactions/" + event, null).body()).get("name").asString());
+        assertEquals(originalFile, jdbc.queryForObject("select photo_file from events where id=?", String.class, event));
+        assertEquals(400, request("PUT", "/events/" + event, eventBase + ",\"meLeavingDate\":\"2026-10-10T21:00:00\"}").statusCode());
+        assertEquals(200, request("PUT", "/events/" + event, eventBase + "}").statusCode());
+        assertNull(jdbc.queryForObject("select photo_file from events where id=?", String.class, event));
+        assertTrue(Files.exists(PHOTO_DIRECTORY.resolve("events").resolve(originalFile)));
+        assertEquals(200, request("GET", "/events/" + reused + "/photo", null).statusCode());
+    }
+
     @Test void profileBuildsLazyHomeAndCliqueCapitalInsideTransaction() throws Exception {
         var home=new Place("Dom profilu",52.2,21.0,null); home.assignOwner(owner); home=places.save(home);
         var capital=new Place("Stolica kliki",50.0,19.0,null); capital.assignOwner(owner); capital=places.save(capital);
