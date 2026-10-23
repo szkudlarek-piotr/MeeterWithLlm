@@ -144,6 +144,7 @@ export default function Dashboard({ email, actorId }) {
 
   function updateInteraction(entry) {
     setCalendarEntries(current => current.map(item => item.id === entry.id ? entry : item))
+    setCalendarVersion(current => current + 1)
   }
 
   async function saveQuote(body) {

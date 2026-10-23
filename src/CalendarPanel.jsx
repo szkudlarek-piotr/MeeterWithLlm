@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
 import EntityPicker from './EntityPicker.jsx'
 import TripMap from './TripMap.jsx'
+import InteractionEditDialog from './InteractionEditDialog.jsx'
 import { interactionEntry } from './InteractionForm.jsx'
 
 const types = {
@@ -70,6 +71,7 @@ function ParticipantsEditor({ entry, actorId, onChange }) {
 
 export default function CalendarPanel({ month, entries, selectedDate, onSelect, onMonthChange, loading, error, retry, actorId, onAdd, onInteractionChange }) {
   const dayDialog = useRef(null)
+  const [editingId, setEditingId] = useState(null)
   useEffect(() => {
     if (!selectedDate) dayDialog.current?.close()
   }, [selectedDate])
@@ -129,6 +131,7 @@ export default function CalendarPanel({ month, entries, selectedDate, onSelect, 
       {selected.map(entry => <article className={`card memory-detail detail-${entry.type.toLowerCase()}`} key={entry.id}>
         <div className="memory-detail-heading"><span className={`type-mark type-${entry.type.toLowerCase()}`}>{types[entry.type][1]}</span><span>{types[entry.type][0]}</span>{entry.startTime && <small>{entry.startTime}{entry.endTime && entry.endTime !== entry.startTime ? ` – ${entry.endTime}` : ''}</small>}</div>
         <h3>{entry.name}</h3>
+        {entry.canAddParticipants && <button type="button" className="text-button" onClick={() => setEditingId(entry.interactionId)}>Edytuj</button>}
         {entry.endDate && entry.endDate !== entry.date && <p className="memory-location">{fullDate(entry.date)} — {fullDate(entry.endDate)}</p>}
         {entry.ongoing && <p className="memory-location">Od {fullDate(entry.date)} · trwa</p>}
         {entry.type === 'WEDDING' && <p className="wedding-couple">♡ {entry.details.groom.fullName} i {entry.details.bride.fullName}</p>}
@@ -141,5 +144,6 @@ export default function CalendarPanel({ month, entries, selectedDate, onSelect, 
         {entry.details.hadAfter && <p className="memory-location">Z poprawinami ♡</p>}
       </article>)}
     </dialog>
+    {editingId !== null && <InteractionEditDialog key={editingId} interactionId={editingId} actorId={actorId} onClose={() => setEditingId(null)} onSaved={onInteractionChange} />}
   </section>
 }

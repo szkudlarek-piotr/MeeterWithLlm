@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
 
-export default function EventPhotoPicker({ value, onChange, onBusy, onModeChange }) {
-  const [mode, setMode] = useState('none')
+export default function EventPhotoPicker({ value, onChange, onBusy, onModeChange, currentPhoto }) {
+  const [mode, setMode] = useState(currentPhoto ? 'current' : 'none')
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(0)
   const [results, setResults] = useState([])
   const [hasNext, setHasNext] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [preview, setPreview] = useState('')
+  const [preview, setPreview] = useState(currentPhoto?.url || '')
   const reader = useRef(null)
   useEffect(() => () => reader.current?.abort(), [])
   useEffect(() => {
@@ -28,6 +28,10 @@ export default function EventPhotoPicker({ value, onChange, onBusy, onModeChange
   function changeMode(next) {
     reader.current?.abort(); reader.current = null
     onBusy(false); setMode(next); onModeChange(next); setError(''); setPreview(''); onChange({})
+    if (next === 'current') {
+      setPreview(currentPhoto.url)
+      onChange({ photoEventId: currentPhoto.id, photoName: currentPhoto.name || '' })
+    }
   }
   function chooseFile(file) {
     reader.current?.abort(); onChange({ photoName: value.photoName }); setPreview(''); setError(''); onBusy(false)
@@ -43,6 +47,7 @@ export default function EventPhotoPicker({ value, onChange, onBusy, onModeChange
   return <section className="event-photo-picker" aria-label="Zdjęcie wydarzenia">
     <label htmlFor="event-photo-mode">Zdjęcie wydarzenia (opcjonalnie)</label>
     <select id="event-photo-mode" value={mode} onChange={event => changeMode(event.target.value)}>
+      {currentPhoto && <option value="current">Zachowaj obecne zdjęcie</option>}
       <option value="none">Bez zdjęcia</option><option value="database">Z wcześniejszego wydarzenia</option><option value="file">Z pliku</option><option value="link">Z linku</option>
     </select>
     {mode !== 'none' && <><label htmlFor="event-photo-name">Nazwa zdjęcia (opcjonalnie)</label><input id="event-photo-name" maxLength={255} value={value.photoName || ''} onChange={event => onChange({ ...value, photoName: event.target.value })} placeholder="Np. scena główna" /></>}
