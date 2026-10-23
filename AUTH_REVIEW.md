@@ -30,4 +30,6 @@ Zachowana została koncepcja tokenów w bazie i cookie ze źródłowego projektu
 
 ## Ograniczenia
 
+Obsługa wewnętrznego dispatchu servletowego `ERROR` jest dozwolona, żeby pierwotny błąd serwera zachował status 500 zamiast zostać zastąpiony przez 401 przy renderowaniu `/error`. Bezpośrednie żądanie HTTP do `/error` nadal jest zabronione; endpointy API wymagają uwierzytelnienia. Frontend interpretuje 401 jako utratę sesji, więc błędy aplikacji nie mogą być maskowane tym statusem. Treść odpowiedzi błędu nadal nie zawiera stack trace ani komunikatu wyjątku.
+
 To nadal lokalny backend developerski: brak odzyskiwania hasła, 2FA, zarządzania kontami i współdzielonego limitera. H2 i automatyczna aktualizacja schematu nie zastępują docelowej bazy i migracji. Plik hasła startowego należy usunąć po zmianie hasła. Publiczne wdrożenie wymaga HTTPS i cookie `Secure`.

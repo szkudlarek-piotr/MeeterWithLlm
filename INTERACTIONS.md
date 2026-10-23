@@ -78,9 +78,11 @@ Filtr dat zwraca zakresy **nakładające się** na podany przedział, a nie tylk
 
 ## Profil osoby
 
+DTO pojedynczego profilu (`GET /api/people/browse/{id}`), w tym dom i stolica kliki, jest budowane w transakcji MeeterService. Nie mapuj encji zwróconej przez browseHuman w kontrolerze: przy wyłączonym open-in-view relacje lazy nie są wtedy dostępne i profil może kończyć się błędem zależnie od przypisanych relacji.
+
 Modal w katalogu ludzi zawiera profil, mapę interakcji, stronicowane wizyty, spotkania, eventy, podróże i cytaty. `GET /api/people/browse/{id}/interactions` przyjmuje `type`, `page`, `size` (1–100), sortuje po dacie interakcji malejąco i zwraca standardowe PageView. Dotyczy wyłącznie interakcji z daną osobą na liście uczestników. Dostęp ma autor zapisu, uczestnik rozpoznany przez Human ID konta lub administrator. Filtr widoczności działa przed liczeniem i paginacją. Profil jest tylko do odczytu; nie rozszerza zwykłego `/api/interactions` ani praw modyfikacji. Zdjęcia cudzych eventów nie są dołączane, ponieważ ich endpoint pozostaje owner-only.
 
-`GET /api/people/browse/{id}/map` stosuje ten sam filtr do wszystkich wyników, niezależnie od strony listy. Zwraca punkty zapisanych miejsc wizyt, spotkań, eventów i wszystkich miejsc podróży, z nazwą interakcji, datą i nazwą miejsca. Nie geokoduje opisów tekstowych. Leaflet pokazuje dostępne punkty i listę; każda podróż ma również własną mapę. `FLATMATE` i `WEDDING` pozostają poza tym profilem interakcji. Katalogowe wykluczenie `my_exes` obowiązuje też dla endpointów profilu.
+`GET /api/people/browse/{id}/map` stosuje ten sam filtr do wszystkich wyników, niezależnie od strony listy. Zwraca punkty zapisanych miejsc wizyt, spotkań, eventów i wszystkich miejsc podróży, z nazwą i kategorią miejsca, bez nazw interakcji ani dat. Każde miejsce występuje tylko raz (deduplikacja po Place ID), także gdy pojawia się w wielu interakcjach. Nie geokoduje opisów tekstowych. Leaflet pokazuje dostępne punkty i listę; każda podróż ma również własną mapę. `FLATMATE` i `WEDDING` pozostają poza tym profilem interakcji. Katalogowe wykluczenie `my_exes` obowiązuje też dla endpointów profilu.
 
 ## Mapa podróży
 

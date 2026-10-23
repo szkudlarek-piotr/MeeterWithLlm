@@ -213,12 +213,12 @@ public class InteractionService {
 
     public record MapPoint(Long id, String name, double latitude, double longitude, String category) {}
     public List<MapPoint> personMap(Long personId) {
-        List<MapPoint> points = new ArrayList<>();
+        Map<Long, MapPoint> points = new LinkedHashMap<>();
         for (Interaction item : interactions.findAll(profileFilter(personId, null), Sort.by("startDate", "id"))) {
             Collection<Place> locations = item instanceof Citybreak trip ? trip.getPlaces() : item.getPlace() == null ? List.of() : List.of(item.getPlace());
-            for (Place location : locations) points.add(new MapPoint((long) points.size(), item.getName() + " · " + item.getStartDate().toLocalDate() + " · " + location.getName(), location.getLatitude(), location.getLongitude(), location.getCategory()));
+            for (Place location : locations) points.putIfAbsent(location.getId(), new MapPoint(location.getId(), location.getName(), location.getLatitude(), location.getLongitude(), location.getCategory()));
         }
-        return points;
+        return new ArrayList<>(points.values());
     }
 
     public Event ownEvent(Long id) {

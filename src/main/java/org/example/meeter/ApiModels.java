@@ -5,6 +5,7 @@ import java.util.UUID;
 public final class ApiModels {
  private ApiModels() {}
  public record PublicQuoteView(Long id,String quote) {}
+ public record PersonProfileView(HumanView person,boolean canEditPhoto) {}
  public record PersonBrowseView(HumanView person,long visitCount,PublicQuoteView publicQuote) {}
  public record PeoplePage(java.util.List<PersonBrowseView> content,int page,int size,long totalElements,boolean hasNext) {}
  public record PlaceInput(@NotBlank @Size(max=200) String name,

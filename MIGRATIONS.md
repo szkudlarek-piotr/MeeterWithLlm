@@ -1,5 +1,7 @@
 # Migracje Flyway (MariaDB 10.7+)
 
+Ręczny import prywatnych podróży z oryginalnej bazy opisuje [TRIP_IMPORT.md](TRIP_IMPORT.md); skrypt `../migrate_trips.sql` pozostaje poza Flyway.
+
 Schemat zmienia Flyway 12.4.0, w wersji zarządzanej przez Spring Boot 4.1.1. Hibernate używa `ddl-auto=validate`: sprawdza mapowania, ale nie tworzy ani nie aktualizuje tabel. Migracje z `src/main/resources/db/migration` wykonują się przed inicjalizacją JPA podczas startu backendu. Numery, sumy kontrolne i wyniki są zapisane w `flyway_schema_history`. `clean` jest wyłączone.
 
 Przed pierwszym uruchomieniem na istniejącej bazie zatrzymaj backend i zapisz pełny backup bazy oraz zachowaj pliki zdjęć. Sprawdź, czy DB_URL wskazuje nową bazę Meeter, nigdy oryginalne `real_meeter`. Nie kopiuj historii Flyway między bazami ręcznie.

@@ -1,7 +1,6 @@
 package org.example.meeter;
 
 import jakarta.validation.constraints.*;
-import org.example.meeter.auth.CurrentAccount;
 import org.example.meeter.interactions.*;
 import org.example.meeter.quote.QuoteService;
 import org.springframework.validation.annotation.Validated;
@@ -13,14 +12,11 @@ public class PersonProfileController {
     private final MeeterService people;
     private final InteractionService interactions;
     private final QuoteService quotes;
-    private final CurrentAccount account;
-    public PersonProfileController(MeeterService people, InteractionService interactions, QuoteService quotes, CurrentAccount account) {
-        this.people=people; this.interactions=interactions; this.quotes=quotes; this.account=account;
+    public PersonProfileController(MeeterService people, InteractionService interactions, QuoteService quotes) {
+        this.people=people; this.interactions=interactions; this.quotes=quotes;
     }
-    public record Profile(ApiModels.HumanView person, boolean canEditPhoto) {}
-    @GetMapping public Profile profile(@PathVariable Long id) {
-        var person=people.browseHuman(id);
-        return new Profile(ApiModels.HumanView.forBrowse(person),person.getCreatedBy()!=null && person.getCreatedBy().getId().equals(account.id()));
+    @GetMapping public ApiModels.PersonProfileView profile(@PathVariable Long id) {
+        return people.profile(id);
     }
     @GetMapping("/interactions") public InteractionModels.PageView interactions(@PathVariable Long id,
         @RequestParam(required=false) InteractionType type, @RequestParam(defaultValue="0") @Min(0) int page,

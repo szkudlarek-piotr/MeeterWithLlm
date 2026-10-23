@@ -42,11 +42,26 @@ public class MeeterService {
  public Human ownHuman(Long id) {
   return people.findOne(this.<Human>owned().and((root,q,cb)->cb.equal(root.get("id"),id))).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Nie znaleziono osoby."));
  }
+ public boolean canEditPhoto(Human human) {
+  return account.isAdmin() || human.getCreatedBy()!=null && human.getCreatedBy().getId().equals(account.id());
+ }
+ public PersonProfileView profile(Long id) {
+  Human human=browseHuman(id);
+  // Build the complete DTO while lazy home/clique/capital relations are available.
+  return new PersonProfileView(HumanView.forBrowse(human),canEditPhoto(human));
+ }
+ private Human photoHuman(Long id) {
+  if(!account.isAdmin()) return ownHuman(id);
+  return people.findById(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Nie znaleziono osoby."));
+ }
+ private HumanView updatedPhotoView(Human human) {
+  return human.getCreatedBy()!=null && human.getCreatedBy().getId().equals(account.id()) ? HumanView.of(human) : HumanView.forBrowse(human);
+ }
  @Transactional public HumanView updatePhoto(Long id,String url) {
-  Human human=ownHuman(id); photos.importPhoto(human,url); return HumanView.of(human);
+  Human human=photoHuman(id); photos.importPhoto(human,url); return updatedPhotoView(human);
  }
  @Transactional public HumanView updatePhotoBytes(Long id,byte[] bytes) {
-  Human human=ownHuman(id); photos.importBytes(human,bytes); return HumanView.of(human);
+  Human human=photoHuman(id); photos.importBytes(human,bytes); return updatedPhotoView(human);
  }
  public List<PlaceView> places(String q,int limit) { return places.findAll(this.<Place>owned().and(search(q,"name")),PageRequest.of(0,limit,Sort.by("name","id"))).map(PlaceView::of).getContent(); }
  public List<CliqueView> cliques(String q,int limit) { return cliques.findAll(this.<Clique>owned().and(search(q,"cliqueName")),PageRequest.of(0,limit,Sort.by("cliqueName","id"))).map(CliqueView::of).getContent(); }

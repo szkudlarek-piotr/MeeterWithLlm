@@ -34,7 +34,13 @@ import static org.junit.jupiter.api.Assertions.*;
     "spring.flyway.enabled=false",
     "spring.jpa.hibernate.ddl-auto=create-drop"
 })
+@org.springframework.context.annotation.Import(ApiIntegrationTests.ErrorTestController.class)
 class ApiIntegrationTests {
+    @org.springframework.web.bind.annotation.RestController
+    static class ErrorTestController {
+        @org.springframework.web.bind.annotation.GetMapping("/api/test/server-error")
+        public String failure() { throw new IllegalStateException("Synthetic server failure"); }
+    }
     @LocalServerPort int port;
     @Autowired HumanRepository people;
     @Autowired org.example.meeter.multimedia.photo.PhotoRepository photoRecords;
@@ -100,6 +106,34 @@ class ApiIntegrationTests {
         return Long.parseLong(match.group(1));
     }
 
+    @Test void profileBuildsLazyHomeAndCliqueCapitalInsideTransaction() throws Exception {
+        var home=new Place("Dom profilu",52.2,21.0,null); home.assignOwner(owner); home=places.save(home);
+        var capital=new Place("Stolica kliki",50.0,19.0,null); capital.assignOwner(owner); capital=places.save(capital);
+        var clique=new Clique("Klika profilu",capital); clique.assignOwner(owner); clique=cliques.save(clique);
+        var human=new Human("Osoba","Z relacjami",null,null,null,null,home,clique); human.assignOwner(owner); human=people.save(human);
+        for(int repeat=0;repeat<3;repeat++) {
+            var response=request("GET","/people/browse/"+human.getId(),null);
+            assertEquals(200,response.statusCode(),response.body());
+            var profile=json.readTree(response.body());
+            assertEquals("Dom profilu",profile.get("person").get("home").get("name").asString());
+            assertEquals("Stolica kliki",profile.get("person").get("clique").get("cliqueCapital").get("name").asString());
+            assertTrue(profile.get("canEditPhoto").asBoolean());
+        }
+        assertEquals(200,request("GET","/auth/me",null).statusCode());
+    }
+
+    @Test void serverFailureKeepsOriginalStatusAndDoesNotInvalidateSession() throws Exception {
+        var failure=request("GET","/test/server-error",null);
+        assertEquals(500,failure.statusCode(),failure.body());
+        assertFalse(failure.body().contains("Synthetic server failure"));
+        assertEquals(200,request("GET","/auth/me",null).statusCode());
+        // Cookie path is /api, so explicitly attach it to test authenticated direct access.
+        var direct=client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/error")).header("Cookie",loginCookie).GET().build(),HttpResponse.BodyHandlers.ofString());
+        assertEquals(403,direct.statusCode());
+        var anonymous=HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/test/server-error")).GET().build(),HttpResponse.BodyHandlers.ofString());
+        assertEquals(401,anonymous.statusCode());
+    }
+
     @Test void categoryIconsRequireAuthenticationAndStayInsideTheirDirectory() throws Exception {
         var directory=PHOTO_DIRECTORY.resolve("categories"); Files.createDirectories(directory);
         ImageIO.write(new BufferedImage(32,32,BufferedImage.TYPE_INT_ARGB),"png",directory.resolve("cafe.png").toFile());
@@ -117,10 +151,11 @@ class ApiIntegrationTests {
         var foreign=users.save(new User("profile-other",encoder.encode("other-password-1234"),foreignHuman));
         var location=new Place("Widoczne miejsce",52.2,21.0,"kawiarnia"); location.assignOwner(foreign); location=places.save(location);
         var secretLocation=new Place("Ukryte miejsce",50.0,19.0,null); secretLocation.assignOwner(foreign); secretLocation=places.save(secretLocation);
+        var hiddenOnlyLocation=new Place("Tylko ukryta interakcja",51.0,18.0,null); hiddenOnlyLocation.assignOwner(foreign); hiddenOnlyLocation=places.save(hiddenOnlyLocation);
         var when=java.time.LocalDateTime.of(2026,10,1,12,0);
         var visible=new org.example.meeter.interactions.Visit("Widoczna wizyta",null,when,1,java.util.Set.of(subject,owner.getHuman()),location);
         visible.assignOwner(foreign); interactions.save(visible);
-        var hidden=new org.example.meeter.interactions.Visit("Ukryta wizyta",null,when.plusDays(1),1,java.util.Set.of(subject,foreignHuman),secretLocation);
+        var hidden=new org.example.meeter.interactions.Visit("Ukryta wizyta",null,when.plusDays(1),1,java.util.Set.of(subject,foreignHuman),hiddenOnlyLocation);
         hidden.assignOwner(foreign); interactions.save(hidden);
         var trip=new org.example.meeter.interactions.Citybreak("Wspólna podróż",null,when,when.plusDays(2),java.util.Set.of(subject,owner.getHuman()),java.util.Set.of(location,secretLocation));
         trip.assignOwner(foreign); interactions.save(trip);
@@ -133,8 +168,13 @@ class ApiIntegrationTests {
         assertEquals("Widoczna wizyta",visits.get("content").get(0).get("name").asString());
         assertFalse(visits.get("content").get(0).get("canAddParticipants").asBoolean());
         assertEquals(404,request("GET","/interactions/"+visible.getId(),null).statusCode());
-        var map=json.readTree(request("GET",base+"/map",null).body()); assertEquals(3,map.size());
+        var map=json.readTree(request("GET",base+"/map",null).body()); assertEquals(2,map.size());
         assertEquals("kawiarnia",map.get(0).get("category").asString());
+        assertEquals(location.getId().longValue(),map.get(0).get("id").asLong());
+        assertEquals("Widoczne miejsce",map.get(0).get("name").asString());
+        assertFalse(map.toString().contains("Widoczna wizyta"));
+        assertFalse(map.toString().contains("Wspólna podróż"));
+        assertFalse(map.toString().contains("Tylko ukryta interakcja"));
         assertFalse(map.toString().contains("Ukryta wizyta"));
         var trips=json.readTree(request("GET",base+"/interactions?type=TRIP",null).body());
         assertEquals(2,trips.get("content").get(0).get("details").get("places").size());
@@ -143,7 +183,7 @@ class ApiIntegrationTests {
         assertEquals(404,request("GET","/quotes/"+privateQuote.getId(),null).statusCode());
         owner.grantRole(Role.ROLE_ADMIN); users.save(owner);
         assertEquals(2,json.readTree(request("GET",base+"/interactions?type=VISIT&size=1",null).body()).get("totalElements").asInt());
-        assertEquals(4,json.readTree(request("GET",base+"/map",null).body()).size());
+        assertEquals(3,json.readTree(request("GET",base+"/map",null).body()).size());
         assertEquals(2,json.readTree(request("GET",base+"/quotes",null).body()).get("totalElements").asInt());
         assertEquals(400,request("GET",base+"/quotes?page=-1",null).statusCode());
         assertEquals(400,request("GET",base+"/interactions?size=101",null).statusCode());
@@ -168,8 +208,18 @@ class ApiIntegrationTests {
         assertEquals(400,request("POST",path,"{\"url\":\"https://example.org/photo.jpg\",\"photoData\":\"YQ==\"}").statusCode());
         assertEquals(400,request("POST",path,"{\"photoData\":\"!invalid!\"}").statusCode());
         var foreign=people.save(new Human("Cudza","Osoba",null,null,null,null,null,null));
+        String foreignPath="/people/"+foreign.getId()+"/photo";
+        assertEquals(404,request("POST",foreignPath,body).statusCode());
+        assertFalse(json.readTree(request("GET","/people/browse/"+foreign.getId(),null).body()).get("canEditPhoto").asBoolean());
         owner.grantRole(Role.ROLE_ADMIN); users.save(owner);
-        assertEquals(404,request("POST","/people/"+foreign.getId()+"/photo",body).statusCode());
+        assertTrue(json.readTree(request("GET","/people/browse/"+foreign.getId(),null).body()).get("canEditPhoto").asBoolean());
+        var adminPhoto=request("POST",foreignPath,body); assertEquals(200,adminPhoto.statusCode(),adminPhoto.body());
+        String browsePhoto=json.readTree(adminPhoto.body()).get("profilePhotoUrl").asString();
+        assertTrue(browsePhoto.startsWith("/api/people/browse/"));
+        assertEquals(200,request("GET",browsePhoto.substring(4),null).statusCode());
+        assertEquals(404,request("GET",foreignPath,null).statusCode());
+        assertNull(people.findById(foreign.getId()).orElseThrow().getCreatedBy());
+        assertEquals(404,request("POST","/people/999999999/photo",body).statusCode());
         var noCsrf=client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api"+path)).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(body)).build(),HttpResponse.BodyHandlers.ofString());
         assertEquals(403,noCsrf.statusCode());
     }
@@ -970,6 +1020,12 @@ class ApiIntegrationTests {
         otherHuman.assignOwner(other); people.save(otherHuman);
         assertEquals(404,request("GET","/people/"+otherHuman.getId()+"/photo",null).statusCode());
         assertEquals(404,request("POST","/people/"+otherHuman.getId()+"/photo","{\"url\":\"https://example.org/image.jpg\"}").statusCode());
+        owner.grantRole(Role.ROLE_ADMIN); users.save(owner);
+        assertTrue(json.readTree(request("GET","/people/browse/"+otherHuman.getId(),null).body()).get("canEditPhoto").asBoolean());
+        var output=new ByteArrayOutputStream(); ImageIO.write(new BufferedImage(20,20,BufferedImage.TYPE_INT_RGB),"png",output);
+        when(remotePhotos.download(any())).thenReturn(output.toByteArray());
+        assertEquals(200,request("POST","/people/"+otherHuman.getId()+"/photo","{\"url\":\"https://example.org/image.jpg\"}").statusCode());
+        assertEquals(other.getId(),people.findById(otherHuman.getId()).orElseThrow().getCreatedBy().getId());
         when(remotePhotos.download(any())).thenReturn(new byte[]{1,2,3});
         long before=people.count();
         assertEquals(400,request("POST","/people","{\"name\":\"Błędne zdjęcie\",\"profilePhotoUrl\":\"https://example.org/image.jpg\"}").statusCode());
