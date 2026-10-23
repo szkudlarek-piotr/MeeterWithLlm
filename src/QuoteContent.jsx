@@ -22,5 +22,5 @@ function formattedQuote(quote) {
 
 export default function QuoteContent({ quote, ...props }) {
   const content = useMemo(() => formattedQuote(String(quote ?? '')), [quote])
-  return <blockquote {...props} className={`quote-content ${props.className || ''}`.trim()}>{content}</blockquote>
+  return <blockquote {...props} lang="pl" className={`quote-content ${props.className || ''}`.trim()}>{content}</blockquote>
 }
