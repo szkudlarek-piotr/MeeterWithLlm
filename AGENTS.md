@@ -213,3 +213,6 @@ Author identity uses the existing `Human` ID linked to each account. Do not infe
 ## Working approach
 
 Read the relevant source and documentation before editing. Keep changes focused on the requested outcome and match existing conventions. Preserve local data and unrelated edits. Update this file or the focused backend documents when commands, architecture, or behavior materially change. Do not record transient process IDs, running-session handles, or current passwords as project setup instructions.
+
+## Quote author selection update
+New quotes require authorId. Authenticated GET /api/quotes/authors searches all Humans regardless of owner, including the linked self and imported records; my_exes remains excluded. This exception applies only to quote author selection and creation. Existing authorless quotes and visibility rules remain supported. Other person pickers retain ownership checks.

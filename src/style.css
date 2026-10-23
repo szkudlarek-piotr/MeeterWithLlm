@@ -179,6 +179,10 @@ button:disabled { cursor: wait; opacity: .6; }
 .event-photo-pages button { background: var(--soft); color: var(--ink); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
 .entity-picker { position: relative; min-width: 0; margin-bottom: 20px; }
 .entity-picker > input { margin-bottom: 0; }
+.quote-author-selection { margin-bottom: 20px; }
+.quote-author-selection > p { margin: 0 0 8px; font-weight: 700; }
+.quote-author-selection > div { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--soft); color: var(--ink); }
+.quote-author-selection button { color: var(--ink); }
 .entity-options { position: absolute; z-index: 8; top: 75px; left: 0; right: 0; max-height: 210px; overflow-y: auto; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 10px 24px #0002; }
 .entity-options button { display: block; width: 100%; padding: 12px; text-align: left; color: var(--ink); background: transparent; border: 0; border-radius: 8px; font-size: 13px; }
 .entity-options button:hover, .entity-options .highlighted { background: var(--soft); }
