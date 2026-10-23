@@ -69,6 +69,14 @@ public class MeeterService {
   Specification<Human> filter=(root,q,cb)->cb.like(cb.lower(cb.concat(cb.concat(root.get("name")," "),cb.coalesce(root.get("surname"),""))),pattern(query),'\\');
   return people.findAll(this.<Human>owned().and(filter),PageRequest.of(0,limit,Sort.by("name","id"))).map(HumanView::of).getContent();
  }
+ public List<org.example.meeter.quote.QuoteModels.AuthorView> quoteAuthors(String query,int limit) {
+  account.id();
+  Specification<Human> filter=(root,q,cb)->cb.and(
+   cb.like(cb.lower(cb.concat(cb.concat(root.get("name")," "),cb.coalesce(root.get("surname"),""))),pattern(query),'\\'),
+   cb.or(cb.isNull(root.get("clique")),cb.notEqual(cb.lower(cb.trim(root.join("clique",jakarta.persistence.criteria.JoinType.LEFT).get("cliqueName"))),"my_exes")));
+  return people.findAll(filter,PageRequest.of(0,limit,Sort.by("surname","name","id")))
+   .map(h->new org.example.meeter.quote.QuoteModels.AuthorView(h.getId(),h.getFullName(),null)).getContent();
+ }
  public PeoplePage browsePeople(String query,int page,int size) {
   return ranking.browse(query,page,size);
  }

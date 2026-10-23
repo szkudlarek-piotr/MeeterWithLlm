@@ -1,6 +1,6 @@
 # Cytaty
 
-Moduł `org.example.meeter.quote` zawiera `Quote`, `QuoteRepository`, `QuoteService`, `QuoteController` i kontrakty `QuoteModels`. Autor to opcjonalna osoba `Human`; właściciel to zalogowane konto `User`, przypisywane przez serwer. Cytaty nie są interakcjami i nie trafiają do kalendarza.
+Moduł `org.example.meeter.quote` zawiera `Quote`, `QuoteRepository`, `QuoteService`, `QuoteController` i kontrakty `QuoteModels`. Autor nowego cytatu to wymagana osoba `Human`; właściciel to zalogowane konto `User`, przypisywane przez serwer. Cytaty nie są interakcjami i nie trafiają do kalendarza.
 
 ## API
 
@@ -18,7 +18,7 @@ Przykład utworzenia:
 }
 ```
 
-Treść po usunięciu skrajnych białych znaków ma mieć 4–10240 znaków. Zachowano minimum 4 z adnotacji przekazanej encji i poprawiono sprzeczny komunikat. `authorId` można pominąć lub podać null (autor nieznany); cudzy i nieistniejący autor zwracają 404. `isPublic` można pominąć, domyślnie false.
+Treść po usunięciu skrajnych białych znaków ma mieć 4–10240 znaków. Zachowano minimum 4 z adnotacji przekazanej encji i poprawiono sprzeczny komunikat. `authorId` jest wymagane (brak/null: 400). Autor może pochodzić z dowolnego konta lub importu; nieistniejący i my_exes zwracają 404. GET /api/quotes/authors?q=...&limit=100 wyszukuje autorów niezależnie od właściciela, również osobę powiązaną z kontem. Zwraca tylko ID, nazwę i pusty URL zdjęcia. `isPublic` można pominąć, domyślnie false.
 
 Odpowiedź cytatu zawiera `id`, `uuid`, `quote`, opcjonalne podsumowanie `author` (`id`, `fullName`, `profilePhotoUrl`), `isPublic` i serwerowy `addTime`. Dane konta, hasła ani tokeny nie są serializowane.
 
@@ -34,6 +34,6 @@ Modal osoby ma zakładkę Cytaty: `GET /api/people/browse/{id}/quotes?page=0&siz
 
 Zakładka Ludzie dołącza do każdej osoby co najwyżej jeden losowy **publiczny** cytat tej osoby jako `publicQuote: {id, quote}` (albo null) w `GET /api/people/browse`. Losowanie odbywa się przy każdym odczycie strony. Zapytanie ogranicza pulę do autorów na bieżącej stronie i `is_public=true` przed losowaniem; nie ma wyjątku dla administratora ani własnych prywatnych cytatów. Cytaty bez autora są pomijane. Cytat nie wpływa na ranking, liczność ani paginację ludzi. Widok nie wysyła osobnego żądania dla każdej osoby. Długie cytaty mają przewijane pole z zachowaniem łamań wierszy.
 
-Menu zachowuje akcję „Dodaj cytat”, ale nie ma osobnego widoku kolekcji. Formularz zawiera treść, licznik znaków, wyszukiwarkę opcjonalnego autora, opcję „Cytat publiczny” oraz stany zapisu i błędu. Po zapisie otwiera listę ludzi i odświeża jej publiczne cytaty. Dane cytatów pozostają w bazie i są używane przez kafelki ludzi oraz grę.
+Menu zachowuje akcję „Dodaj cytat”, ale nie ma osobnego widoku kolekcji. Formularz zawiera treść, licznik znaków, wyszukiwarkę wymaganego autora, opcję „Cytat publiczny” oraz stany zapisu i błędu. Po zapisie otwiera listę ludzi i odświeża jej publiczne cytaty. Dane cytatów pozostają w bazie i są używane przez kafelki ludzi oraz grę.
 
 Tabela `quotes` powstaje przez aktualną konfigurację developerską Hibernate. Tekst ma kolumnę o długości 10240, a nie domyślne 255. Autor i właściciel nie są usuwani kaskadowo wraz z cytatem. Przy rozbudowie o usuwanie osób/kont uwzględnij klucze obce z cytatów.

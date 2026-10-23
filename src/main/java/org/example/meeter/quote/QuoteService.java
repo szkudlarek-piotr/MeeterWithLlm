@@ -30,10 +30,11 @@ public class QuoteService {
         String text = input.quote().strip();
         if (text.length() < 4 || text.length() > 10240)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cytat powinien mieć od 4 do 10240 znaków.");
-        var author = input.authorId() == null ? null : people.ownHuman(input.authorId());
+        if (input.authorId() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wybierz autora cytatu.");
+        var author = people.browseHuman(input.authorId());
         Quote quote = new Quote(text, author, Boolean.TRUE.equals(input.isPublic()));
         quote.assignOwner(users.getReferenceById(account.id()));
-        return View.of(quotes.saveAndFlush(quote));
+        return view(quotes.saveAndFlush(quote));
     }
     public View get(Long id) {
         return view(quotes.findOne(visibleToCurrentAccount().and((root, query, cb) -> cb.equal(root.get("id"), id)))

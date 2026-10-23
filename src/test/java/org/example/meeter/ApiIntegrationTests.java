@@ -411,8 +411,8 @@ class ApiIntegrationTests {
         assertFalse(response.body().contains("createdBy")); assertFalse(response.body().contains("password"));
         assertEquals(owner.getId(), quotes.findById(quoteId).orElseThrow().getCreatedBy().getId());
         var unknown = request("POST", "/quotes", "{\"quote\":\"Autor nieznany\"}");
-        id(unknown); assertTrue(json.readTree(unknown.body()).get("author").isNull());
-        assertFalse(json.readTree(unknown.body()).get("isPublic").asBoolean());
+        assertEquals(400, unknown.statusCode());
+
         assertEquals(200, request("GET", "/quotes/" + quoteId, null).statusCode());
         assertEquals(405, request("GET", "/quotes", null).statusCode());
     }
@@ -425,7 +425,14 @@ class ApiIntegrationTests {
         Human human = people.save(new Human("Inny", "Autor", null, null, null, null, null, null));
         User other = users.save(new User("quote-other", encoder.encode("other-password-1234"), human));
         human.assignOwner(other); people.save(human);
-        assertEquals(404, request("POST", "/quotes", "{\"quote\":\"Tekst cytatu\",\"authorId\":" + human.getId() + "}").statusCode());
+        var authors = request("GET", "/quotes/authors?q=Inny", null);
+        assertEquals(200, authors.statusCode());
+        assertEquals(human.getId().longValue(), json.readTree(authors.body()).get(0).get("id").asLong());
+        assertTrue(json.readTree(authors.body()).get(0).get("profilePhotoUrl").isNull());
+        Human imported = people.save(new Human("Michał", "Importowany", null, null, null, null, null, null));
+        var importedAuthors = request("GET", "/quotes/authors?q=micha", null);
+        assertEquals(imported.getId().longValue(), json.readTree(importedAuthors.body()).get(0).get("id").asLong());
+        assertEquals(201, request("POST", "/quotes", "{\"quote\":\"Tekst cytatu\",\"authorId\":" + human.getId() + "}").statusCode());
         var foreign = new org.example.meeter.quote.Quote("Cudzy prywatny cytat", human, false);
         foreign.assignOwner(other); foreign = quotes.saveAndFlush(foreign);
         assertEquals(404, request("GET", "/quotes/" + foreign.getId(), null).statusCode());
@@ -433,7 +440,7 @@ class ApiIntegrationTests {
         var anonymous = HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/quotes")).GET().build(), HttpResponse.BodyHandlers.discarding());
         assertEquals(401, anonymous.statusCode());
         var noCsrf = client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/quotes")).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString("{\"quote\":\"Bez tokenu\"}")).build(), HttpResponse.BodyHandlers.discarding());
-        assertEquals(403, noCsrf.statusCode()); assertEquals(1, quotes.count());
+        assertEquals(403, noCsrf.statusCode()); assertEquals(2, quotes.count());
     }
 
     @Test void quotesRespectPublicAuthorAndAdministratorVisibility() throws Exception {

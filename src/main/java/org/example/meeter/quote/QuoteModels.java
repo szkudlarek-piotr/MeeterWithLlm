@@ -6,7 +6,7 @@ import java.util.*;
 
 public final class QuoteModels {
     private QuoteModels() {}
-    public record Input(@NotBlank @Size(min = 4, max = 10240) String quote, @Positive Long authorId, Boolean isPublic) {}
+    public record Input(@NotBlank @Size(min = 4, max = 10240) String quote, @NotNull(message = "Wybierz autora cytatu.") @Positive Long authorId, Boolean isPublic) {}
     public record AuthorView(Long id, String fullName, String profilePhotoUrl) {}
     public record View(Long id, UUID uuid, String quote, AuthorView author, boolean isPublic, LocalDateTime addTime) {
         static View of(Quote quote) {
