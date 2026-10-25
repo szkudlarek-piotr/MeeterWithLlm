@@ -39,6 +39,10 @@ public class InteractionService {
         return humans.findOne(this.<Human>owned().and((root, q, cb) -> cb.equal(root.get("id"), id)))
             .orElseThrow(() -> missing("osoby"));
     }
+    private Human participant(Long id) {
+        return humans.findById(id)
+            .orElseThrow(() -> missing("uczestnika"));
+    }
     private Place place(Long id) {
         if (id == null) return null;
         return places.findOne(this.<Place>owned().and((root, q, cb) -> cb.equal(root.get("id"), id)))
@@ -47,9 +51,9 @@ public class InteractionService {
     private Set<Human> participants(Details details) {
         Set<Long> ids = new LinkedHashSet<>(details.participantIds());
         ids.add(account.principal().humanId());
-        Set<Human> result = new LinkedHashSet<>(humans.findAll(
-            this.<Human>owned().and((root, q, cb) -> root.get("id").in(ids))));
-        if (result.size() != ids.size()) throw missing("uczestnika");
+        Set<Human> result = new LinkedHashSet<>();
+        for (Long id : ids) result.add(id.equals(account.principal().humanId())
+            ? humans.findById(id).orElseThrow(() -> missing("uczestnika")) : participant(id));
         return result;
     }
     private Set<Place> route(Set<Long> ids) {
@@ -71,8 +75,8 @@ public class InteractionService {
     public View addParticipants(Long interactionId, ParticipantsInput input) {
         Interaction item = interactions.findLockedById(interactionId).orElseThrow(() -> missing("interakcji"));
         if (!item.getCreatedBy().getId().equals(account.id())) throw missing("interakcji");
-        // Resolve every person before mutating, so a foreign ID fails the entire request.
-        List<Human> additions = input.participantIds().stream().map(this::human).toList();
+        // Resolve all directory people before mutating, so invalid IDs fail atomically.
+        List<Human> additions = input.participantIds().stream().map(this::participant).toList();
         User creator = users.getReferenceById(account.id());
         additions.forEach(person -> item.addParticipant(person, creator));
         interactions.flush();

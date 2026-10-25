@@ -28,7 +28,11 @@ Bez źródła event jest zapisywany bez zdjęcia. Obrazy są dekodowane (do 16 m
 
 DTO eventu zawiera `details.photoUrl` (lokalny adres lub null), `details.photoName` i `details.placeString`. `GET /api/events/{id}/photo` wymaga zalogowania oraz własności eventu. Formularz pozwala wyszukiwać wcześniejsze wydarzenia po nazwie i przeglądać strony ich zdjęć. Żadna z tych kopii nie jest umieszczana w `resources/static`.
 
-## Zdjęcia osób
+## Edycja zdjęć wydarzeń
+
+Edycja `PUT /api/events/{id}` stosuje te same źródła zdjęć i zabezpieczenia co tworzenie. Zachowanie zdjęcia wymaga `photoEventId` z ID edytowanego eventu (formularz ustawia je domyślnie); brak źródła odpina zdjęcie. Odpięcie lub zastąpienie nie usuwa poprzedniego pliku, ponieważ inne eventy mogą go używać. Nieudany zapis zachowuje poprzedni stan rekordu i sprząta nowe pliki przez istniejącą synchronizację transakcji.
+
+## Zdjęcia osób — API
 
 Modal profilu umożliwia właścicielowi osoby lub administratorowi dodanie lub zmianę zdjęcia z pliku albo publicznego linku, także dla osoby zaimportowanej bez właściciela lub należącej do innego konta. `POST /api/people/{id}/photo` przyjmuje dokładnie jedno niepuste pole: `url` lub `photoData` (Base64 bez prefiksu data URL). Limity pliku i normalizacja pozostają wspólne: 4 MB, 16 megapikseli, JPEG 512×512. `GET /api/people/browse/{id}` zwraca `canEditPhoto`, wyliczane z własności osoby lub roli administratora. Wyjątek administratora dotyczy tylko zapisu zdjęcia; nie zmienia właściciela osoby ani zasad zwykłego odczytu zdjęć. Dla cudzej osoby odpowiedź zapisu wskazuje katalogowy adres portretu. Nowe zdjęcie aktualizuje też awatar karty bez odświeżania strony.
 
@@ -56,3 +60,7 @@ Generator przykładowych danych i pobieranie demonstracyjnych portretów został
 DTO uczestników interakcji używa zwykłego adresu portretu dla własnych osób. Dla osób zaimportowanych bez właściciela lub należących do innego konta wskazuje istniejący endpoint katalogu `/api/people/browse/{id}/photo`, z zachowaniem parametru wersji zdjęcia. Osoby wykluczone z katalogu przez `my_exes`, których konto nie posiada, nie otrzymują adresu portretu. Dzięki temu kalendarz wyświetla dostępne portrety importowanych uczestników bez zmiany uprawnień endpointów zdjęć.
 
 Na wyraźne życzenie użytkownika wspólny katalog osób pokazuje wszystkie rekordy Human po zalogowaniu. Jego DTO wskazuje na GET /api/people/browse/{id}/photo, który udostępnia profilówki także osób bez właściciela i przypisanych innym kontom. Zachowuje walidację typu zdjęcia, pliku i ścieżki. Dotychczasowy GET /api/people/{id}/photo, selektory osób i zasady widoczności portretów w cytatach pozostają bez zmian. Zapis profilówki ma opisany wyżej wyjątek administratora.
+
+Wyszukiwarki autorów cytatów i uczestników zwracają portrety przez istniejący uwierzytelniony `/api/people/browse/{id}/photo`; nie rozszerza to dostępu do zwykłego `/api/people/{id}/photo` ani zapisu zdjęć. Pozostałe DTO cytatów zachowują dotychczasowe reguły pomijania portretów obcych autorów.
+
+Wyjątek dla historii: wybór uczestników obejmuje także `my_exes`. Portrety uczestników są dostępne przez uwierzytelniony GET `/api/people/participants/{id}/photo`, również dla ex; korzystają z tych samych zabezpieczeń plików co pozostałe portrety. Zwykły katalog i jego zdjęcia nadal wykluczają `my_exes`; wybór autora cytatu zachowuje dotychczasowe filtrowanie.

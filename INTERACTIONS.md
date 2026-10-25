@@ -68,7 +68,15 @@ Przykład pełnego spotkania:
 }
 ```
 
-## Odczyt
+## Edycja z modalu kalendarza
+
+Przycisk „Edytuj” w szczegółach interakcji otwiera formularz z aktualnymi danymi pobranymi z API. Zapis używa `PUT /api/meetings/{id}`, `/visits/{id}`, `/events/{id}`, `/trips/{id}`, `/flatmates/{id}` lub `/weddings/{id}` z kontraktem odpowiadającym tworzeniu danego typu. Odpowiedź: 200 i aktualne DTO. Typu interakcji nie można zmienić; obce ID, brak ID lub inny typ dają 404. Edytować może wyłącznie twórca interakcji, bez wyjątku administratora; wymagane są sesja i CSRF. Zapis blokuje rekord nadrzędny, tak jak operacje uczestników.
+
+W edycji `details.participantIds` musi być pustym zbiorem; uczestników zmienia się osobno istniejącymi endpointami. Zapis nazwy, opisu, dat lub miejsc nie odtwarza usuniętych uczestników i zachowuje ID, czas oraz twórcę istniejących powiązań. Zmiana współlokatora lub pary młodej dodaje nowych wskazanych ludzi do uczestników, ale nie usuwa poprzednich; dotychczasowe referencje można zachować również dla rekordów importowanych. Nowo przypisywane osoby i miejsca nadal wymagają własności. Podróż zachowuje metadane pozostawionych miejsc, usuwa tylko odpięte powiązania i nadaje nowym serwerowe metadane edytującego konta. Tożsamość interakcji, UUID, twórca i data dodania pozostają niezmienione. Nie jest potrzebna migracja schematu.
+
+Formularz wydarzenia domyślnie zachowuje obecne zdjęcie przez `photoEventId` wskazujące edytowany rekord. „Bez zdjęcia” odpina zdjęcie, a plik/link/inny event zastępuje je z dotychczasową normalizacją i ochroną pobierania. Dawne pliki pozostają na dysku, ponieważ mogą być współdzielone. Nowe pliki są sprzątane przy rollbacku. Po zapisie kalendarz ponownie pobiera miesiąc, również gdy interakcja została przeniesiona na inną datę. Anulowanie nie zapisuje zmian.
+
+## Odczyt interakcji
 
 `GET /api/interactions` przyjmuje `page` (od 0), `size` (1–100), `q`, opcjonalne `from`, `to` oraz `type`: `MEETING`, `VISIT`, `EVENT`, `TRIP`, `FLATMATE`, `WEDDING`. Zwraca `content`, `page`, `size`, `totalElements`, `hasNext`.
 
@@ -87,3 +95,5 @@ Modal w katalogu ludzi zawiera profil, mapę interakcji, stronicowane wizyty, sp
 ## Mapa podróży
 
 Modal dnia w kalendarzu pokazuje dla podróży interaktywną mapę Leaflet z punktami zapisanych miejsc i listą ich nazw. Widok automatycznie obejmuje wszystkie prawidłowe współrzędne; kliknięcie punktu pokazuje nazwę. Mapa korzysta z kafelków OpenStreetMap i wymaga internetu. Przy błędzie pobierania wyświetla komunikat, a lista miejsc pozostaje dostępna. Pusty zbiór miejsc ma osobny komunikat. Kolory kontrolek i obramowanie pasują do obu motywów. Punkty nie oznaczają kolejności odwiedzin ani przebiegu drogi; model przechowuje zbiór miejsc.
+
+Aktualizacja wyboru uczestników: wyjątkiem od opisanej wyżej własności referencji są teraz `details.participantIds` i POST dopisujący uczestników. Przyjmują ludzi z całego katalogu (bez `my_exes`) zgodnie z [RELATIONSHIPS.md](RELATIONSHIPS.md). Pozostałe referencje nadal wymagają własności.

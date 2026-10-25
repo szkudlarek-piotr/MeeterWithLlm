@@ -13,4 +13,6 @@ public class BrowsePhotoController {
     public BrowsePhotoController(MeeterService service, PhotoController photos) { this.service=service; this.photos=photos; }
     @GetMapping("/api/people/browse/{id}/photo")
     public ResponseEntity<Resource> image(@PathVariable Long id) { return photos.imageForHuman(service.browseHuman(id)); }
+    @GetMapping("/api/people/participants/{id}/photo")
+    public ResponseEntity<Resource> participantImage(@PathVariable Long id) { return photos.imageForHuman(service.participantHuman(id)); }
 }

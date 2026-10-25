@@ -27,7 +27,11 @@ Both operations require authentication and CSRF and acquire a write lock on the 
 
 `getParticipants()` and `getPlaces()` expose read-only endpoint sets for existing DTO code. The association collections retain the full metadata internally. Participant summaries retain their existing shape; the interaction DTO adds permission fields described above. JPA entities and account details are not serialized.
 
-## Existing H2 databases
+## Interaction detail edits
+
+Typed `PUT /api/{meetings,visits,events,trips,flatmates,weddings}/{id}` endpoints lock the interaction and require its creator (no admin bypass). They require an empty `details.participantIds`; participant mutations retain their dedicated authorization rules above. Edits preserve identity and audit metadata on existing participant links and do not restore explicitly removed automatic participants. Newly assigned wedding spouses or a flatmate are added with the editor as creator; former domain references are not automatically removed from participants. Trip-place updates keep retained association rows and their metadata, remove only omitted links, and create new links with server-managed editor metadata. Unchanged imported person/place references can remain; newly selected references require ownership.
+
+## Existing H2 database compatibility
 
 `RelationshipSchemaMigration` runs before `entityManagerFactory` starts. Fresh databases are created directly from the entity mappings. For existing tables it adds identity IDs and metadata, replaces the old composite primary key with the ID primary key, and retains unique endpoint pairs and creator foreign keys. The upgrade can be run again without changing existing IDs or populated metadata. It does not delete relationship rows.
 
@@ -36,3 +40,7 @@ Old join tables did not record authors or creation times. Their metadata is **in
 Before upgrading a file-backed development database, stop the backend and save a copy of `data/meeter-dev.mv.db`. H2 schema changes commit independently, so the entire upgrade is not one atomic transaction; the individual steps are repeatable. Test against a copy when changing migration behavior. This migration supports H2 only; a future database engine requires an explicit migration strategy. `ddl-auto=update` remains a development convenience rather than a general production migration system.
 
 Verification covers old-row preservation, repeatability, generated IDs for subsequent inserts, pair uniqueness, creator foreign keys, API-created metadata, and deletion of association rows while keeping endpoint records.
+
+## Wybór uczestników z katalogu
+
+Na żądanie użytkownika selektor uczestników korzysta z `GET /api/people/participants?q=...&limit=100`. Wyniki obejmują osoby importowane, bez właściciela i należące do innych kont; `my_exes` jest również dostępne. DTO zawiera tylko `id`, `fullName`, `profilePhotoUrl` z endpointu /api/people/participants/{id}/photo. Tworzenie interakcji i POST dopisujący uczestników akceptują te osoby, zachowując twórcę powiązania i własność osoby. Zasady odczytu interakcji, usuwania powiązań, wyboru pary młodej i współlokatora nie zmieniają się. Selektory pokazują okrągłe zdjęcia w wynikach i przy wybranych osobach; brak zdjęcia oznacza inicjały.

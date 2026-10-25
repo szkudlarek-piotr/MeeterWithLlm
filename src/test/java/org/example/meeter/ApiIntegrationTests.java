@@ -125,7 +125,8 @@ class ApiIntegrationTests {
             String body = "{" + details + "," + fields[index] + "}";
             var created = request("POST", path, body);
             long interactionId = id(created);
-            var before = json.readTree(created.body());
+            // Read the persisted precision rather than comparing the constructor's nanoseconds with database microseconds.
+            var before = json.readTree(request("GET", "/interactions/" + interactionId, null).body());
             var links = jdbc.queryForList("select id, human_id, created_at, created_by_id from interaction_human where interaction_id=? order by id", interactionId);
             var route = jdbc.queryForList("select id, place_id, created_at, created_by_id from trip_place where trip_id=? order by id", interactionId);
             var updated = request("PUT", path + "/" + interactionId, body.replace("Przed edycją", "Po edycji").replace("Opis\"", "Nowy opis\""));
@@ -157,11 +158,17 @@ class ApiIntegrationTests {
         var noCsrf = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/meetings/" + meeting))
             .header("Content-Type", "application/json").PUT(HttpRequest.BodyPublishers.ofString(body)).build();
         assertEquals(403, client.send(noCsrf, HttpResponse.BodyHandlers.discarding()).statusCode());
-        assertEquals(401, HttpClient.newHttpClient().send(noCsrf, HttpResponse.BodyHandlers.discarding()).statusCode());
+        assertEquals(403, HttpClient.newHttpClient().send(noCsrf, HttpResponse.BodyHandlers.discarding()).statusCode());
+        var anonymous = HttpClient.newBuilder().cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL)).build();
+        var anonymousCsrf = anonymous.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/auth/csrf")).GET().build(), HttpResponse.BodyHandlers.ofString());
+        var anonymousPut = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/meetings/" + meeting))
+            .header("Content-Type", "application/json").header("X-XSRF-TOKEN", json.readTree(anonymousCsrf.body()).get("token").asString())
+            .PUT(HttpRequest.BodyPublishers.ofString(body)).build();
+        assertEquals(401, anonymous.send(anonymousPut, HttpResponse.BodyHandlers.discarding()).statusCode());
         Human foreign = people.save(new Human("Obcy", "Autor", null, null, null, null, null, null));
         User other = users.save(new User("interaction-edit-other", encoder.encode("other-password-1234"), foreign));
         foreign.assignOwner(other); people.save(foreign);
-        var otherMeeting = new Meeting("Obca interakcja", null, java.time.LocalDate.of(2026,10,10), java.util.List.of(foreign), null, null);
+        var otherMeeting = new org.example.meeter.interactions.Meeting("Obca interakcja", null, java.time.LocalDate.of(2026,10,10), java.util.List.of(foreign), null, null);
         otherMeeting.assignOwner(other); interactions.saveAndFlush(otherMeeting);
         assertEquals(404, request("PUT", "/meetings/" + otherMeeting.getId(), body).statusCode());
         owner.grantRole(org.example.meeter.auth.Role.ROLE_ADMIN); users.saveAndFlush(owner);
@@ -959,7 +966,7 @@ class ApiIntegrationTests {
         Human foreignHuman = people.save(new Human("Obcy", null, null, null, null, null, null, null));
         long meeting = id(request("POST", "/meetings", "{" + details("Kontrola uprawnień") + ",\"date\":\"2025-12-06\"}"));
         String path = "/interactions/" + meeting + "/participants";
-        assertEquals(404, request("POST", path, "{\"participantIds\":[" + person + "," + foreignHuman.getId() + "]}").statusCode());
+        assertEquals(404, request("POST", path, "{\"participantIds\":[" + person + ",999999]}").statusCode());
         assertEquals(1, jdbc.queryForObject("select count(*) from interaction_human where interaction_id=?", Integer.class, meeting));
         for (String body : java.util.List.of("{}", "{\"participantIds\":[]}", "{\"participantIds\":[null]}", "{\"participantIds\":[-1]}"))
             assertEquals(400, request("POST", path, body).statusCode());
@@ -1032,14 +1039,48 @@ class ApiIntegrationTests {
         otherHuman.assignOwner(other); people.save(otherHuman);
         Place otherPlace = new Place("Private", 1, 1, null); otherPlace.assignOwner(other); otherPlace = places.save(otherPlace);
         String base = "{" + details("Test");
-        assertEquals(404, request("POST", "/meetings", "{" + details("Test", otherHuman.getId()) + ",\"date\":\"2026-10-18\"}").statusCode());
+        assertEquals(201, request("POST", "/meetings", "{" + details("Test", otherHuman.getId()) + ",\"date\":\"2026-10-18\"}").statusCode());
         assertEquals(404, request("POST", "/visits", base + ",\"visitDate\":\"2026-10-18T12:00\",\"duration\":1,\"placeId\":" + otherPlace.getId() + "}").statusCode());
         assertEquals(404, request("POST", "/trips", base + ",\"startDate\":\"2026-10-18T12:00\",\"endDate\":\"2026-10-18T20:00\",\"placeIds\":[" + otherPlace.getId() + "]}").statusCode());
         var privateMeeting = new org.example.meeter.interactions.Meeting("Private", null, java.time.LocalDate.of(2026,10,18), java.util.Set.of(otherHuman), otherPlace, null);
         privateMeeting.assignOwner(other); privateMeeting = interactions.save(privateMeeting);
         assertEquals(404, request("GET", "/interactions/" + privateMeeting.getId(), null).statusCode());
-        assertEquals(0, json.readTree(request("GET", "/interactions", null).body()).get("totalElements").asInt());
-        assertEquals(1, interactions.count());
+        assertEquals(1, json.readTree(request("GET", "/interactions", null).body()).get("totalElements").asInt());
+        assertEquals(2, interactions.count());
+    }
+
+    @Test void directoryPeopleCanBeFoundAndAddedToEvents() throws Exception {
+        Human imported = new Human("Michał", "Importowany", null, null, null, null, null, null);
+        imported.setProfilePhotoFile("portrait.jpg"); imported = people.save(imported);
+        Human foreign = people.save(new Human("Michał", "Cudzy", null, null, null, null, null, null));
+        User other = users.save(new User("participant-directory", encoder.encode("other-password-1234"), foreign));
+        foreign.assignOwner(other); people.save(foreign);
+        Clique hiddenClique = cliques.save(new Clique(" MY_EXES ", null));
+        Human hidden = people.save(new Human("Michał", "Ukryty", null, null, null, null, null, hiddenClique));
+        var found = request("GET", "/people/participants?q=Micha", null);
+        assertEquals(200, found.statusCode());
+        var results = json.readTree(found.body()); assertEquals(3, results.size());
+        assertTrue(found.body().contains("/api/people/participants/" + imported.getId() + "/photo"));
+        assertEquals("[]", request("GET", "/people?q=Micha", null).body());
+        String dates = ",\"startDate\":\"2026-10-24T18:00\",\"stopDate\":\"2026-10-24T20:00\"}";
+        long event = id(request("POST", "/events", "{" + details("Wydarzenie", imported.getId()) + dates));
+        var added = request("POST", "/interactions/" + event + "/participants", "{\"participantIds\":[" + foreign.getId() + "]}");
+        assertEquals(200, added.statusCode(), added.body());
+        assertEquals(3, json.readTree(added.body()).get("participants").size());
+        assertEquals(owner.getId(), jdbc.queryForObject("select created_by_id from interaction_human where interaction_id=? and human_id=?", Long.class, event, foreign.getId()));
+        assertEquals(201, request("POST", "/events", "{" + details("Historyczne wydarzenie", hidden.getId()) + dates).statusCode());
+        assertEquals(200, request("POST", "/interactions/" + event + "/participants", "{\"participantIds\":[" + hidden.getId() + "]}").statusCode());
+        assertEquals(404, request("GET", "/people/browse/" + hidden.getId(), null).statusCode());
+        var portrait = new org.example.meeter.multimedia.photo.Photo();
+        portrait.setPhotoName("participant-ex.png");
+        portrait.setPhotoType(org.example.meeter.multimedia.photo.PhotoType.PROFILE_PICTURE);
+        hidden.setProfilePhoto(photoRecords.save(portrait)); people.save(hidden);
+        javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(2,2,java.awt.image.BufferedImage.TYPE_INT_RGB), "png", PHOTO_DIRECTORY.resolve("participant-ex.png").toFile());
+        assertEquals(200, request("GET", "/people/participants/" + hidden.getId() + "/photo", null).statusCode());
+        assertEquals(404, request("GET", "/people/browse/" + hidden.getId() + "/photo", null).statusCode());
+        assertEquals(2, interactions.count());
+        assertNull(people.findById(imported.getId()).orElseThrow().getCreatedBy());
+        assertEquals(401, HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/people/participants")).GET().build(), HttpResponse.BodyHandlers.discarding()).statusCode());
     }
 
     @Test void displaysMigratedProfileMetadataAndRejectsUnsafeNamesAndWrongTypes() throws Exception {

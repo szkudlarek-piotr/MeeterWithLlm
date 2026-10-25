@@ -75,7 +75,17 @@ public class MeeterService {
    cb.like(cb.lower(cb.concat(cb.concat(root.get("name")," "),cb.coalesce(root.get("surname"),""))),pattern(query),'\\'),
    cb.or(cb.isNull(root.get("clique")),cb.notEqual(cb.lower(cb.trim(root.join("clique",jakarta.persistence.criteria.JoinType.LEFT).get("cliqueName"))),"my_exes")));
   return people.findAll(filter,PageRequest.of(0,limit,Sort.by("surname","name","id")))
-   .map(h->new org.example.meeter.quote.QuoteModels.AuthorView(h.getId(),h.getFullName(),null)).getContent();
+   .map(h->new org.example.meeter.quote.QuoteModels.AuthorView(h.getId(),h.getFullName(),HumanView.forBrowse(h).profilePhotoUrl())).getContent();
+ }
+ public List<org.example.meeter.quote.QuoteModels.AuthorView> participantPeople(String query,int limit) {
+  account.id();
+  Specification<Human> filter=(root,q,cb)->cb.like(cb.lower(cb.concat(cb.concat(root.get("name")," "),cb.coalesce(root.get("surname"),""))),pattern(query),'\\');
+  return people.findAll(filter,PageRequest.of(0,limit,Sort.by("surname","name","id")))
+   .map(h->new org.example.meeter.quote.QuoteModels.AuthorView(h.getId(),h.getFullName(),h.getProfilePhotoUrl()==null?null:h.getProfilePhotoUrl().replace("/api/people/","/api/people/participants/"))).getContent();
+ }
+ public Human participantHuman(Long id) {
+  account.id();
+  return people.findById(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Nie znaleziono osoby."));
  }
  public PeoplePage browsePeople(String query,int page,int size) {
   return ranking.browse(query,page,size);
