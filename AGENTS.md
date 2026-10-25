@@ -216,3 +216,11 @@ Read the relevant source and documentation before editing. Keep changes focused 
 
 ## Quote author selection update
 New quotes require authorId. Authenticated GET /api/quotes/authors searches all Humans regardless of owner, including the linked self and imported records; my_exes remains excluded. This exception applies only to quote author selection and creation. Existing authorless quotes and visibility rules remain supported. Other person pickers retain ownership checks.
+
+## Interaction editing
+
+Calendar day details offer an Edit action for the interaction creator. Typed PUT endpoints use the creation contracts with empty details.participantIds; participant edits stay separate. Preserve interaction identity/metadata, retained participant and trip-place rows, and explicit participant removals. New references require ownership; unchanged imported references may remain. Event editing defaults to retaining its photo via photoEventId=self; no source detaches it without deleting shared files. Read backend/INTERACTIONS.md and backend/RELATIONSHIPS.md for details.
+
+## Participant directory selection
+
+Authenticated GET `/api/people/participants` searches all directory Humans, including imported and foreign-owned records, including normalized `my_exes` for historical records. It returns only ID, full name and participant portrait URL (/api/people/participants/{id}/photo), including ex portraits. Interaction creation and the dedicated add-participants endpoint accept those people; the linked self is still added automatically at creation. Links record the acting account, without changing person ownership. Interaction reads/writes and removal permissions stay unchanged. Other person assignments (spouses, flatmate, ordinary pickers) retain ownership requirements. Quote-author and participant pickers show circular portraits using authenticated directory/participant photo URLs, with initials for missing images.

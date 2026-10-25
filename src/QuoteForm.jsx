@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import EntityPicker from './EntityPicker.jsx'
+import PersonAvatar from './PersonAvatar.jsx'
 
 export default function QuoteForm({ onSave }) {
   const [quote, setQuote] = useState('')
@@ -27,7 +28,7 @@ export default function QuoteForm({ onSave }) {
       {author.length ? <div className="quote-author-selection">
         <p id="quote-author-label">Autor cytatu *</p>
         <div role="group" aria-labelledby="quote-author-label">
-          <strong>{author[0].fullName}</strong>
+          <span className="selected-person"><PersonAvatar person={author[0]} /><strong>{author[0].fullName}</strong></span>
           <button type="button" onClick={() => setAuthor([])}>Zmień autora</button>
         </div>
       </div> : <EntityPicker label="Autor cytatu" source="quotes/authors" required value={author} onChange={setAuthor} />}

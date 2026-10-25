@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { api } from './api.js'
 
 export default function EventPhotoPicker({ value, onChange, onBusy, onModeChange, currentPhoto }) {
+  const pickerId = useId()
+  const fieldId = name => pickerId + '-' + name
   const [mode, setMode] = useState(currentPhoto ? 'current' : 'none')
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(0)
@@ -45,15 +47,15 @@ export default function EventPhotoPicker({ value, onChange, onBusy, onModeChange
     next.readAsDataURL(file)
   }
   return <section className="event-photo-picker" aria-label="Zdjęcie wydarzenia">
-    <label htmlFor="event-photo-mode">Zdjęcie wydarzenia (opcjonalnie)</label>
-    <select id="event-photo-mode" value={mode} onChange={event => changeMode(event.target.value)}>
+    <label htmlFor={fieldId('event-photo-mode')}>Zdjęcie wydarzenia (opcjonalnie)</label>
+    <select id={fieldId('event-photo-mode')} value={mode} onChange={event => changeMode(event.target.value)}>
       {currentPhoto && <option value="current">Zachowaj obecne zdjęcie</option>}
       <option value="none">Bez zdjęcia</option><option value="database">Z wcześniejszego wydarzenia</option><option value="file">Z pliku</option><option value="link">Z linku</option>
     </select>
-    {mode !== 'none' && <><label htmlFor="event-photo-name">Nazwa zdjęcia (opcjonalnie)</label><input id="event-photo-name" maxLength={255} value={value.photoName || ''} onChange={event => onChange({ ...value, photoName: event.target.value })} placeholder="Np. scena główna" /></>}
-    {mode === 'link' && <><label htmlFor="event-photo-url">Publiczny link do zdjęcia *</label><input id="event-photo-url" type="url" required maxLength={2048} value={value.photoUrl || ''} onChange={event => onChange({ ...value, photoUrl: event.target.value })} placeholder="https://…" /><p className="field-hint">Bezpośredni link do JPG, PNG lub GIF. Zdjęcie zostanie pobrane przy zapisie wydarzenia.</p></>}
-    {mode === 'file' && <><label htmlFor="event-photo-file">Plik zdjęcia *</label><input id="event-photo-file" type="file" accept="image/jpeg,image/png,image/gif" required onChange={event => chooseFile(event.target.files[0])} /></>}
-    {mode === 'database' && <><label htmlFor="event-photo-search">Wyszukaj wcześniejsze wydarzenie</label><input id="event-photo-search" value={query} maxLength={200} onChange={event => { setQuery(event.target.value); setPage(0) }} />
+    {mode !== 'none' && <><label htmlFor={fieldId('event-photo-name')}>Nazwa zdjęcia (opcjonalnie)</label><input id={fieldId('event-photo-name')} maxLength={255} value={value.photoName || ''} onChange={event => onChange({ ...value, photoName: event.target.value })} placeholder="Np. scena główna" /></>}
+    {mode === 'link' && <><label htmlFor={fieldId('event-photo-url')}>Publiczny link do zdjęcia *</label><input id={fieldId('event-photo-url')} type="url" required maxLength={2048} value={value.photoUrl || ''} onChange={event => onChange({ ...value, photoUrl: event.target.value })} placeholder="https://…" /><p className="field-hint">Bezpośredni link do JPG, PNG lub GIF. Zdjęcie zostanie pobrane przy zapisie wydarzenia.</p></>}
+    {mode === 'file' && <><label htmlFor={fieldId('event-photo-file')}>Plik zdjęcia *</label><input id={fieldId('event-photo-file')} type="file" accept="image/jpeg,image/png,image/gif" required onChange={event => chooseFile(event.target.files[0])} /></>}
+    {mode === 'database' && <><label htmlFor={fieldId('event-photo-search')}>Wyszukaj wcześniejsze wydarzenie</label><input id={fieldId('event-photo-search')} value={query} maxLength={200} onChange={event => { setQuery(event.target.value); setPage(0) }} />
       <div className="event-photo-options" aria-busy={loading}>{!loading && results.map(item => <button type="button" key={item.id} aria-pressed={value.photoEventId === item.id} onClick={() => { onChange({ photoName: value.photoName || item.details.photoName || '', photoEventId: item.id }); setPreview(item.details.photoUrl) }}><img src={item.details.photoUrl} alt="" /><span>{item.name}</span></button>)}</div>
       {loading ? <p role="status">Wczytywanie zdjęć…</p> : !results.length && <p className="field-hint">Na tej stronie nie ma wydarzeń ze zdjęciem.</p>}
       <div className="event-photo-pages"><button type="button" disabled={!page || loading} onClick={() => setPage(page - 1)}>Poprzednia strona</button><span>{page + 1}</span><button type="button" disabled={!hasNext || loading} onClick={() => setPage(page + 1)}>Następna strona</button></div>

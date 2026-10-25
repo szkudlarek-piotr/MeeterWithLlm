@@ -186,6 +186,11 @@ button:disabled { cursor: wait; opacity: .6; }
 .entity-options { position: absolute; z-index: 8; top: 75px; left: 0; right: 0; max-height: 210px; overflow-y: auto; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 10px 24px #0002; }
 .entity-options button { display: block; width: 100%; padding: 12px; text-align: left; color: var(--ink); background: transparent; border: 0; border-radius: 8px; font-size: 13px; }
 .entity-options button:hover, .entity-options .highlighted { background: var(--soft); }
+.entity-options button.person-option { display: flex; align-items: center; gap: 12px; }
+.entity-options .person-option .calendar-avatar { width: 40px; height: 40px; font-size: 12px; }
+.selected-person { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.selected-person > .text-button { margin-left: auto; }
+.selected-entities .calendar-avatar { width: 32px; height: 32px; font-size: 10px; }
 .entity-options p { padding: 8px; font-size: 12px; color: var(--muted); }
 .selected-entities, .participant-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
 .selected-entities > span, .participant-chips > span { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; border-radius: 20px; padding: 6px 10px; background: var(--soft); color: var(--ink); }

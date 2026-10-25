@@ -4,6 +4,8 @@ import EntityPicker from './EntityPicker.jsx'
 import TripMap from './TripMap.jsx'
 import InteractionEditDialog from './InteractionEditDialog.jsx'
 import { interactionEntry } from './InteractionForm.jsx'
+import PersonAvatar from './PersonAvatar.jsx'
+export { default as PersonAvatar } from './PersonAvatar.jsx'
 
 const types = {
   MEETING: ['Spotkanie', '☕'], VISIT: ['Wizyta', '⌂'], EVENT: ['Event', '✦'],
@@ -12,16 +14,6 @@ const types = {
 const keyOf = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 const occurs = (entry, date) => entry.date <= date && (entry.ongoing || date <= (entry.endDate || entry.date))
 const fullDate = date => new Date(`${date}T12:00:00`).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })
-
-export function PersonAvatar({ person }) {
-  const [failed, setFailed] = useState(false)
-  const photo = person.profilePhotoUrl || person.photoUrl
-  useEffect(() => setFailed(false), [photo])
-  const initials = person.fullName.split(' ').filter(Boolean).map(part => part[0]).slice(0, 2).join('')
-  return <span className="calendar-avatar" title={person.fullName}>
-    {photo && !failed ? <img src={photo} alt={person.fullName} loading="lazy" onError={() => setFailed(true)} /> : <span aria-label={person.fullName}>{initials}</span>}
-  </span>
-}
 
 function peopleOf(entries, actorId) {
   const people = entries.flatMap(entry => entry.participants || [])
@@ -60,7 +52,7 @@ function ParticipantsEditor({ entry, actorId, onChange }) {
       </span>)}</div>
       {!entry.participants?.length && <p className="calendar-empty-hint">Brak uczestników.</p>}
       {entry.canAddParticipants && <form onSubmit={event => { event.preventDefault(); if (people.length) change() }}>
-        <EntityPicker label="Dodaj uczestników" source="people" value={people} onChange={setPeople} multiple excludeIds={(entry.participants || []).map(person => person.id)} />
+        <EntityPicker label="Dodaj uczestników" source="people/participants" value={people} onChange={setPeople} multiple excludeIds={(entry.participants || []).map(person => person.id)} />
         <button type="submit" className="primary" disabled={busy || !people.length}>{busy ? 'Zapisywanie…' : 'Dodaj wybrane osoby'}</button>
       </form>}
     </fieldset>
@@ -72,10 +64,12 @@ function ParticipantsEditor({ entry, actorId, onChange }) {
 export default function CalendarPanel({ month, entries, selectedDate, onSelect, onMonthChange, loading, error, retry, actorId, onAdd, onInteractionChange }) {
   const dayDialog = useRef(null)
   const [editingId, setEditingId] = useState(null)
+  const [editNotice, setEditNotice] = useState('')
   useEffect(() => {
     if (!selectedDate) dayDialog.current?.close()
   }, [selectedDate])
   function selectDay(date) {
+    setEditNotice('')
     onSelect(date)
     if (!dayDialog.current.open) dayDialog.current.showModal()
   }
@@ -124,6 +118,7 @@ export default function CalendarPanel({ month, entries, selectedDate, onSelect, 
       <button type="button" className="close-dialog" aria-label="Zamknij szczegóły dnia" onClick={() => dayDialog.current.close()} autoFocus>×</button>
       <div className="day-panel-heading"><div><p className="eyebrow">JEDEN DZIEŃ, WIELE HISTORII</p><h2 id="calendar-day-title">{selectedDate ? fullDate(selectedDate) : 'Wybierz dzień'}</h2></div></div>
       {selectedDate && <button className="primary" onClick={addMeeting}>+ Dodaj spotkanie</button>}
+      {editNotice && <p className="participant-notice" role="status">{editNotice}</p>}
       {loading && <p role="status" className="calendar-empty-hint">Wczytywanie interakcji…</p>}
       {error && <p className="field-error" role="alert">{error} <button className="text-button" onClick={retry}>Spróbuj ponownie</button></p>}
       {!selectedDate && <p className="calendar-empty-hint">Wybierz kafelek, żeby zobaczyć spotkania, ludzi i wspomnienia.</p>}
@@ -144,6 +139,6 @@ export default function CalendarPanel({ month, entries, selectedDate, onSelect, 
         {entry.details.hadAfter && <p className="memory-location">Z poprawinami ♡</p>}
       </article>)}
     </dialog>
-    {editingId !== null && <InteractionEditDialog key={editingId} interactionId={editingId} actorId={actorId} onClose={() => setEditingId(null)} onSaved={onInteractionChange} />}
+    {editingId !== null && <InteractionEditDialog key={editingId} interactionId={editingId} actorId={actorId} onClose={() => setEditingId(null)} onSaved={entry => { onInteractionChange(entry); setEditNotice(`Zapisano zmiany: ${entry.name}.`) }} />}
   </section>
 }
