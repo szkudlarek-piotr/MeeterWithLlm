@@ -1,6 +1,6 @@
 let csrfRequest
 async function csrf() {
-  if (!csrfRequest) csrfRequest = fetch('/api/auth/csrf', { credentials: 'same-origin' })
+  if (!csrfRequest) csrfRequest = fetch('/api/v2/auth/csrf', { credentials: 'same-origin' })
     .then(async response => {
       if (!response.ok) throw new Error(response.status >= 500
         ? 'Backend jest niedostępny. Sprawdź, czy działa na porcie 8091, i spróbuj ponownie.'
@@ -16,7 +16,7 @@ export async function api(path, { body, signal, method = body === undefined ? 'G
     const token = await csrf()
     headers[token.headerName] = token.token
   }
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`/api/v2${path}`, {
     method,
     headers,
     credentials: 'same-origin',

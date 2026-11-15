@@ -1,3 +1,4 @@
+import { GameProgress, GameTableScroll } from './styles/QuoteGamePanel.js'
 import { useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
 import EntityPicker from './EntityPicker.jsx'
@@ -13,16 +14,16 @@ function VisitSelector({ value, onChange }) {
     const controller = new AbortController()
     setLoading(true); setError(''); setResult(null)
     const timer = setTimeout(() => {
-      api(`/interactions?type=VISIT&q=${encodeURIComponent(query)}&page=${page}&size=5`, { signal: controller.signal })
+      api(`/quote-games/visits?q=${encodeURIComponent(query)}&page=${page}&size=10`, { signal: controller.signal })
         .then(setResult).catch(error => { if (!controller.signal.aborted) setError(error.message) })
         .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     }, 200)
     return () => { clearTimeout(timer); controller.abort() }
   }, [query, page])
   return <section aria-label="Wybór wizyty">
-    <label htmlFor="game-visit-search">Wyszukaj wizytę</label><input id="game-visit-search" value={query} maxLength={200} onChange={event => { setQuery(event.target.value); setPage(0) }} placeholder="Nazwa wizyty…" />
+    <h4>Wybierz wizytę z listy</h4><label htmlFor="game-visit-search">Filtruj listę (opcjonalnie)</label><input id="game-visit-search" value={query} maxLength={200} onChange={event => { setQuery(event.target.value); setPage(0) }} placeholder="Nazwa wizyty…" />
     {value && <p className="save-notice">Wybrana wizyta: {value.name}</p>}
-    <div className="game-visit-options">{result?.content.map(visit => <button type="button" key={visit.id} aria-pressed={value?.id === visit.id} onClick={() => onChange(visit)}><strong>{visit.name}</strong><small>{visit.startDate.slice(0, 10)} · {visit.participants.length} osób</small></button>)}</div>
+    <div className="game-visit-options">{result?.content.map(visit => <button type="button" key={visit.id} aria-pressed={value?.id === visit.id} onClick={() => onChange(visit)}><strong>{visit.name}</strong><small>{visit.startDate.slice(0, 10)} · {visit.participantCount} osób</small></button>)}</div>
     {loading && <p role="status">Wczytywanie wizyt…</p>}{error && <p className="field-error" role="alert">{error}</p>}
     {!loading && !error && result?.content.length === 0 && <p className="field-hint">Brak wizyt. Dodaj wizytę z uczestnikami albo wybierz kliki.</p>}
     {(page > 0 || result?.hasNext) && <div className="event-photo-pages"><button type="button" disabled={loading || !page} onClick={() => setPage(value => value - 1)}>Poprzednie wizyty</button><span>{page + 1}</span><button type="button" disabled={loading || !result?.hasNext} onClick={() => setPage(value => value + 1)}>Następne wizyty</button></div>}
@@ -31,7 +32,7 @@ function VisitSelector({ value, onChange }) {
 
 const percent = value => value == null ? 'Poza rankingiem' : `${value.toLocaleString('pl-PL', { maximumFractionDigits: 1 })}%`
 
-export default function QuoteGamePanel() {
+export default function QuoteGamePanel({ single = false }) {
   const [mode, setMode] = useState('visit')
   const [visit, setVisit] = useState(null)
   const [cliques, setCliques] = useState([])
@@ -54,12 +55,14 @@ export default function QuoteGamePanel() {
   useEffect(() => {
     const controller = new AbortController()
     setListsLoading(true); setListError('')
-    Promise.all([api(`/quote-games?page=${historyPage}`, { signal: controller.signal }), api('/quote-games/leaderboard', { signal: controller.signal })])
+    const historyPath = single ? `/quote-games/single/history?page=${historyPage}` : `/quote-games?page=${historyPage}`
+    const leaderboardPath = single ? '/quote-games/single/leaderboard' : '/quote-games/leaderboard'
+    Promise.all([api(historyPath, { signal: controller.signal }), api(leaderboardPath, { signal: controller.signal })])
       .then(([history, scores]) => { setHistory(history); setScores(scores) })
       .catch(error => { if (!controller.signal.aborted) setListError(error.message) })
       .finally(() => { if (!controller.signal.aborted) setListsLoading(false) })
     return () => controller.abort()
-  }, [reload, historyPage])
+  }, [reload, historyPage, single])
 
   function receive(next) {
     offset.current = Date.parse(next.serverNow) - Date.now()
@@ -94,22 +97,27 @@ export default function QuoteGamePanel() {
 
   function create(event) {
     event.preventDefault()
+    if (single) {
+      run(() => api('/quote-games/single', { body: { secondsPerQuestion: Number(seconds) } }))
+      return
+    }
     if (mode === 'visit' && !visit || mode === 'cliques' && !cliques.length) { setError('Wybierz wizytę albo co najmniej jedną klikę.'); return }
     run(() => api('/quote-games', { body: { visitId: mode === 'visit' ? visit.id : null, cliqueIds: mode === 'cliques' ? cliques.map(item => item.id) : [], secondsPerQuestion: Number(seconds) } }))
   }
   const last = game?.answers.at(-1)
-  return <section className="quote-game" aria-label="Zgadnij autora cytatu">
+  return <section className="quote-game" aria-label={single ? 'KTO ETA SKAZAŁ' : 'Zgadnij autora cytatu'}>
     {error && <p className="field-error" role="alert">{error}{game && <button className="text-button" disabled={busy} onClick={() => run(() => api(`/quote-games/${game.summary.id}`))}>Odśwież stan gry</button>}</p>}
     {!game ? <form className="card interaction-form game-setup" onSubmit={create}>
-      <h3>Kto to powiedział?</h3><p className="form-intro">Wybierz towarzystwo. Wylosujemy maksymalnie dwa publiczne cytaty każdej osoby, a potem przetasujemy całą pulę.</p>
-      <fieldset disabled={busy}><label htmlFor="game-mode">Pula cytatów</label><select id="game-mode" value={mode} onChange={event => setMode(event.target.value)}><option value="visit">Uczestnicy wizyty</option><option value="cliques">Członkowie wybranych klik</option></select>
-        {mode === 'visit' ? <VisitSelector value={visit} onChange={setVisit} /> : <EntityPicker label="Wybierz kliki (maksymalnie 10)" source="cliques" multiple value={cliques} onChange={setCliques} />}
+      <h3>{single ? 'KTO ETA SKAZAŁ' : 'Kto to powiedział?'}</h3><p className="form-intro">{single ? 'Jedna gra, jeden losowy autor i jeden jego publiczny cytat. Zgadnij autora spośród wszystkich ludzi.' : 'Wybierz towarzystwo. Wylosujemy maksymalnie dwa publiczne cytaty każdej osoby, a potem przetasujemy całą pulę.'}</p>
+      <fieldset disabled={busy}>
+        {!single && <><label htmlFor="game-mode">Pula cytatów</label><select id="game-mode" value={mode} onChange={event => setMode(event.target.value)}><option value="visit">Uczestnicy wizyty</option><option value="cliques">Członkowie wybranych klik</option></select>
+          {mode === 'visit' ? <VisitSelector value={visit} onChange={setVisit} /> : <EntityPicker label="Wybierz kliki (maksymalnie 10)" source="cliques" multiple value={cliques} onChange={setCliques} />}</>}
         <label htmlFor="game-seconds">Sekundy na cytat</label><input id="game-seconds" type="number" required min={10} max={120} value={seconds} onChange={event => setSeconds(event.target.value)} />
         <p className="field-hint">Własne cytaty nie liczą się do wyniku. Upływ czasu oznacza nietrafioną odpowiedź. Każdy gracz ma własną rozgrywkę.</p>
         <button className="primary submit" disabled={busy}>{busy ? 'Losowanie…' : 'Zaczynamy →'}</button>
       </fieldset>
     </form> : <div className="card game-play">
-      <div className="game-progress"><span>{game.summary.scopeLabel}</span><strong>{game.summary.answered}/{game.summary.total}</strong></div>
+      <GameProgress><span>{game.summary.scopeLabel}</span><strong>{game.summary.answered}/{game.summary.total}</strong></GameProgress>
       <progress value={game.summary.answered} max={game.summary.total} aria-label="Postęp rozgrywki" />
       {game.question ? <>
         <div className={`game-clock ${remaining <= 5 ? 'urgent' : ''}`} role="timer" aria-label="Pozostały czas">◷ {remaining} s</div>
@@ -127,7 +135,7 @@ export default function QuoteGamePanel() {
       {listError && <p className="field-error" role="alert">{listError} <button className="text-button" onClick={() => setReload(value => value + 1)}>Spróbuj ponownie</button></p>}
       {listsLoading && <p role="status">Wczytywanie wyników…</p>}
       {!scores.length && !listsLoading && !listError && <p>Jeszcze brak wyników. Pierwsza ukończona gra może być Twoja.</p>}
-      {!!scores.length && <div className="game-table-scroll"><table><thead><tr><th>Miejsce</th><th>Gracz</th><th>Skuteczność</th><th>Trafienia</th><th>Czas</th></tr></thead><tbody>{scores.map(score => <tr key={score.playerId}><td>{score.rank}</td><td>{score.playerName}</td><td><strong>{percent(score.percentage)}</strong></td><td>{score.correct}/{score.eligible}</td><td>{(score.elapsedMillis / 1000).toLocaleString('pl-PL', { maximumFractionDigits: 1 })} s</td></tr>)}</tbody></table></div>}
+      {!!scores.length && <GameTableScroll><table><thead><tr><th>Miejsce</th><th>Gracz</th><th>Skuteczność</th><th>Trafienia</th><th>Czas</th></tr></thead><tbody>{scores.map(score => <tr key={score.playerId}><td>{score.rank}</td><td>{score.playerName}</td><td><strong>{percent(score.percentage)}</strong></td><td>{score.correct}/{score.eligible}</td><td>{(score.elapsedMillis / 1000).toLocaleString('pl-PL', { maximumFractionDigits: 1 })} s</td></tr>)}</tbody></table></GameTableScroll>}
     </section>
     <section className="card game-history" aria-label="Twoje rozgrywki"><h3>Twoje rozgrywki</h3>{history?.content.map(item => <div className="game-history-row" key={item.id}><div><strong>{item.scopeLabel}</strong><small>{new Date(item.createdAt).toLocaleString('pl-PL')} · {item.answered}/{item.total} odpowiedzi{item.finishedAt ? ` · ${percent(item.percentage)}` : ' · w toku'}</small></div><button className="text-button" disabled={busy} onClick={() => run(() => api(`/quote-games/${item.id}`))}>{item.finishedAt ? 'Wynik' : 'Wznów'}</button></div>)}{history?.content.length === 0 && <p>Tu znajdziesz zapisane gry i wrócisz do rozpoczętej rozgrywki.</p>}
       {(historyPage > 0 || history?.hasNext) && <div className="event-photo-pages"><button disabled={!historyPage || listsLoading} onClick={() => setHistoryPage(value => value - 1)}>Nowsze gry</button><span>{historyPage + 1}</span><button disabled={!history?.hasNext || listsLoading} onClick={() => setHistoryPage(value => value + 1)}>Starsze gry</button></div>}

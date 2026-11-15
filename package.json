@@ -11,7 +11,8 @@
   "dependencies": {
     "leaflet": "^1.9.4",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "styled-components": "^6.4.2"
   },
   "devDependencies": {
     "vite": "latest"

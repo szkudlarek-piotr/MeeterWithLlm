@@ -13,11 +13,27 @@ function formattedQuote(quote) {
     const tag = node.localName
     if (discardedTags.has(tag)) return null
     if (depth >= 40) return node.textContent
-    const children = Array.from(node.childNodes, (child, index) => render(child, `${key}-${index}`, depth + 1))
+    if (tag === 'br') return createElement('br', { key })
+    const children = renderChildren(node, key, depth + 1)
     if (!formattingTags.has(tag)) return children
-    return tag === 'br' ? createElement('br', { key }) : createElement(tag, { key }, children)
+    return createElement(tag, { key }, children)
   }
-  return Array.from(template.content.childNodes, (node, index) => render(node, String(index)))
+
+  function renderChildren(parent, key, depth) {
+    // Imported quotes can mark the same line break with both HTML and a newline.
+    for (const node of parent.childNodes) {
+      if (node.nodeType !== 1 || node.localName !== 'br') continue
+      const next = node.nextSibling
+      const previous = node.previousSibling
+      if (next?.nodeType === 3 && /^[\t ]*\n/.test(next.data)) {
+        next.data = next.data.replace(/^[\t ]*\n/, '')
+      } else if (previous?.nodeType === 3) {
+        previous.data = previous.data.replace(/\n[\t ]*$/, '')
+      }
+    }
+    return Array.from(parent.childNodes, (node, index) => render(node, `${key}-${index}`, depth))
+  }
+  return renderChildren(template.content, 'quote', 0)
 }
 
 export default function QuoteContent({ quote, ...props }) {

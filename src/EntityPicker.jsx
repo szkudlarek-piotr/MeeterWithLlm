@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { api } from './api.js'
 import PersonAvatar from './PersonAvatar.jsx'
 
-export default function EntityPicker({ label, source, value, onChange, multiple = false, required = false, excludeIds = [] }) {
+export default function EntityPicker({ label, source, value, onChange, multiple = false, required = false, excludeIds = [], interactionType }) {
   const id = useId()
   const inputRef = useRef(null)
   const [query, setQuery] = useState('')
@@ -12,19 +12,19 @@ export default function EntityPicker({ label, source, value, onChange, multiple 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const display = item => item.fullName || item.name
-  const peoplePicker = source.startsWith('people') || source === 'quotes/authors'
+  const peoplePicker = source.startsWith('people') || source === 'quotes/authors' || source === 'admin/users/people'
   const available = options.filter(item => !value.some(selected => selected.id === item.id) && !excludeIds.includes(item.id))
 
   useEffect(() => {
     if (!open) return
     const controller = new AbortController()
     setLoading(true); setError(''); setOptions([]); setActive(-1)
-    api(`/${source}?q=${encodeURIComponent(query)}&limit=100`, { signal: controller.signal })
+    api(`/${source}?q=${encodeURIComponent(query)}&limit=100${interactionType ? `&type=${encodeURIComponent(interactionType)}` : ''}`, { signal: controller.signal })
       .then(setOptions)
       .catch(error => { if (!controller.signal.aborted) setError(error.message) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [query, source, open])
+  }, [query, source, open, interactionType])
 
   function select(item) {
     onChange(multiple ? [...value, item] : [item])

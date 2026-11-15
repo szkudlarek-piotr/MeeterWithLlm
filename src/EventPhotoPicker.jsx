@@ -1,3 +1,4 @@
+import { PhotoPicker, PhotoPreview } from './styles/EventPhotoPicker.js'
 import { useEffect, useId, useRef, useState } from 'react'
 import { api } from './api.js'
 
@@ -46,7 +47,7 @@ export default function EventPhotoPicker({ value, onChange, onBusy, onModeChange
     next.onerror = () => { setError('Nie udało się odczytać pliku.'); onBusy(false) }
     next.readAsDataURL(file)
   }
-  return <section className="event-photo-picker" aria-label="Zdjęcie wydarzenia">
+  return <PhotoPicker aria-label="Zdjęcie wydarzenia">
     <label htmlFor={fieldId('event-photo-mode')}>Zdjęcie wydarzenia (opcjonalnie)</label>
     <select id={fieldId('event-photo-mode')} value={mode} onChange={event => changeMode(event.target.value)}>
       {currentPhoto && <option value="current">Zachowaj obecne zdjęcie</option>}
@@ -61,8 +62,8 @@ export default function EventPhotoPicker({ value, onChange, onBusy, onModeChange
       <div className="event-photo-pages"><button type="button" disabled={!page || loading} onClick={() => setPage(page - 1)}>Poprzednia strona</button><span>{page + 1}</span><button type="button" disabled={!hasNext || loading} onClick={() => setPage(page + 1)}>Następna strona</button></div>
       {!value.photoEventId && <p className="field-hint">Wybierz zdjęcie albo opcję „Bez zdjęcia”.</p>}
     </>}
-    {preview && <img className="event-photo-preview" src={preview} alt="Wybrane zdjęcie wydarzenia" />}
+    {preview && <PhotoPreview src={preview} alt="Wybrane zdjęcie wydarzenia" />}
     {mode !== 'none' && <small className="field-hint">Maksymalnie 4 MB i 16 megapikseli. Zdjęcie zachowa proporcje.</small>}
     {error && <p className="field-error" role="alert">{error}</p>}
-  </section>
+  </PhotoPicker>
 }

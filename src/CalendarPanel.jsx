@@ -5,6 +5,7 @@ import TripMap from './TripMap.jsx'
 import InteractionEditDialog from './InteractionEditDialog.jsx'
 import { interactionEntry } from './InteractionForm.jsx'
 import PersonAvatar from './PersonAvatar.jsx'
+import ParticipantRecommendations from './ParticipantRecommendations.jsx'
 export { default as PersonAvatar } from './PersonAvatar.jsx'
 
 const types = {
@@ -22,7 +23,7 @@ function peopleOf(entries, actorId) {
   return others.length ? others : unique
 }
 
-function ParticipantsEditor({ entry, actorId, onChange }) {
+export function ParticipantsEditor({ entry, actorId, onChange, allowRemoval = true }) {
   const [people, setPeople] = useState([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -48,11 +49,12 @@ function ParticipantsEditor({ entry, actorId, onChange }) {
       <legend>Uczestnicy</legend>
       <div className="calendar-detail-people">{(entry.participants || []).map(person => <span className="calendar-person" key={person.id}>
         <PersonAvatar person={person} /><span>{person.fullName}</span>
-        {entry.removableParticipantIds.includes(person.id) && <button type="button" className="participant-remove" aria-label={`Usuń uczestnika: ${person.fullName}`} onClick={() => change(person)}>{person.id === actorId ? 'Usuń mnie' : 'Usuń'}</button>}
+        {allowRemoval && entry.removableParticipantIds.includes(person.id) && <button type="button" className="participant-remove" aria-label={`Usuń uczestnika: ${person.fullName}`} onClick={() => change(person)}>{person.id === actorId ? 'Usuń mnie' : 'Usuń'}</button>}
       </span>)}</div>
       {!entry.participants?.length && <p className="calendar-empty-hint">Brak uczestników.</p>}
       {entry.canAddParticipants && <form onSubmit={event => { event.preventDefault(); if (people.length) change() }}>
-        <EntityPicker label="Dodaj uczestników" source="people/participants" value={people} onChange={setPeople} multiple excludeIds={(entry.participants || []).map(person => person.id)} />
+        <ParticipantRecommendations startDate={entry.date} name={entry.name} placeText={entry.details?.placeString || ''} places={entry.recommendationPlaces || []} interactionId={entry.interactionId} guests={[...(entry.participants || []), ...people]} onSelect={person => setPeople(current => current.some(item => item.id === person.id) || entry.participants?.some(item => item.id === person.id) ? current : [...current, person])} />
+        <EntityPicker label="Dodaj uczestników" source="people/participants" interactionType={entry.type} value={people} onChange={setPeople} multiple excludeIds={(entry.participants || []).map(person => person.id)} />
         <button type="submit" className="primary" disabled={busy || !people.length}>{busy ? 'Zapisywanie…' : 'Dodaj wybrane osoby'}</button>
       </form>}
     </fieldset>

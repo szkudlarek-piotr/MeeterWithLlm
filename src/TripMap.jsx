@@ -1,3 +1,4 @@
+import { MapPlaces } from './styles/TripMap.js'
 import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -15,7 +16,7 @@ function categoryMarker(place) {
   const content = document.createElement('span')
   content.className = 'place-category-marker-content'
   const image = document.createElement('img')
-  image.src = `/api/places/category-icons/${encodeURIComponent(filename)}`
+  image.src = `/api/v2/places/category-icons/${encodeURIComponent(filename)}`
   image.alt = ''
   image.addEventListener('error', () => {
     content.textContent = '●'
@@ -71,6 +72,6 @@ export default function TripMap({ places = [], title = 'Miejsca na trasie', empt
       <div ref={container} className="trip-map" role="region" aria-label={title} />
       {tileError && <p className="field-hint" role="status">Nie udało się pobrać części mapy. Miejsca znajdziesz na liście poniżej.</p>}
     </> : <p className="field-hint">{emptyMessage}</p>}
-    {uniquePlaces.length > 0 && <ul className="trip-map-places">{uniquePlaces.map(place => <li key={place.id}>{placeLabel(place)}</li>)}</ul>}
+    {uniquePlaces.length > 0 && <MapPlaces>{uniquePlaces.map(place => <li key={place.id}>{placeLabel(place)}</li>)}</MapPlaces>}
   </section>
 }

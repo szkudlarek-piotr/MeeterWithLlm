@@ -1,3 +1,4 @@
+import { DashboardMain, SearchArea } from './styles/DashboardElements.js'
 import { useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
 import HumanForm from './HumanForm.jsx'
@@ -7,6 +8,8 @@ import InteractionForm, { interactionEntry, interactionTypes } from './Interacti
 import QuoteForm from './QuoteForm.jsx'
 import QuoteGamePanel from './QuoteGamePanel.jsx'
 import PeoplePanel from './PeoplePanel.jsx'
+import CliquesPanel from './CliquesPanel.jsx'
+import AdminPanel from './AdminPanel.jsx'
 import NewsPanel from './NewsPanel.jsx'
 
 const categories = [
@@ -22,7 +25,7 @@ const categories = [
   ['Śluby', 'Dodaj ślub', '♡', 'Nazwa ślubu'],
   ['Cytaty', 'Dodaj cytat', '❝', 'Treść cytatu'],
 ]
-export default function Dashboard({ email, actorId }) {
+export default function Dashboard({ email, actorId, roles = [], publicQuotesOnly, onTogglePublicQuotes }) {
   const [people, setPeople] = useState([])
   const [, setHumans] = useState([])
   const [cliques, setCliques] = useState([])
@@ -44,7 +47,6 @@ export default function Dashboard({ email, actorId }) {
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
   const directoryVisible = person => person.clique?.cliqueName?.trim().toLowerCase() !== 'my_exes'
-  const visiblePeople = view === 'people' ? people.filter(directoryVisible) : people
   const visibleMatches = view === 'people' ? matches.filter(directoryVisible) : matches
   const dateKey = day => `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
   const offset = (new Date(month.getFullYear(), month.getMonth(), 1).getDay() + 6) % 7
@@ -125,6 +127,7 @@ export default function Dashboard({ email, actorId }) {
     clique = await api('/cliques', { body: { cliqueName: clique.cliqueName, cliqueCapitalId: clique.cliqueCapital?.id ?? null } })
     setApiError('')
     setCliques(current => [...current, clique])
+    setView('cliques')
     formDialog.current.close()
   }
 
@@ -162,9 +165,12 @@ export default function Dashboard({ email, actorId }) {
           <div className="profile"><span className="avatar">{email[0].toUpperCase()}</span><div><strong>Twój Meeter</strong><small>{email}</small></div></div>
           <nav aria-label="Menu główne">
             <button className={`nav-item ${view === 'people' ? 'active' : ''}`} onClick={() => setView('people')}><span>◎</span> Ludzie</button>
+            <button className={`nav-item ${view === 'cliques' ? 'active' : ''}`} onClick={() => setView('cliques')}><span>◌</span> Kliki</button>
+            {roles.includes('ROLE_ADMIN') && <button className={`nav-item ${view === 'admin' ? 'active' : ''}`} onClick={() => setView('admin')}><span>⚙</span> Administracja</button>}
             <button className={`nav-item ${view === 'feed' ? 'active' : ''}`} onClick={() => setView('feed')}><span>▦</span> Aktualności</button>
             <button className={`nav-item ${view === 'calendar' ? 'active' : ''}`} onClick={() => setView('calendar')}><span>▤</span> Kalendarz</button>
             <button className={`nav-item ${view === 'game' ? 'active' : ''}`} onClick={() => setView('game')}><span>🎲</span> Zgadnij autora</button>
+            <button className={`nav-item ${view === 'single-game' ? 'active' : ''}`} onClick={() => setView('single-game')}><span>❝</span> KTO ETA SKAZAŁ</button>
           </nav>
           <p className="sidebar-heading">DODAJ DO SWOJEGO ŚWIATA</p>
           <nav aria-label="Dodawanie">
@@ -173,21 +179,20 @@ export default function Dashboard({ email, actorId }) {
           <div className="sidebar-note"><span>✧</span><p>Każde spotkanie<br />to nowa historia.</p></div>
         </aside>
 
-        <section className="dashboard-main">
+        <DashboardMain>
           {notice && <p className="save-notice" role="status">✓ {notice}</p>}
           {apiError && <p className="field-error" role="alert">{apiError}</p>}
-          <div className="search-area">
+          <SearchArea>
             <label className="friend-search"><span aria-hidden="true">⌕</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Szukaj znajomych…" aria-label="Szukaj znajomych" /></label>
             {query.trim() && <div className="search-results" aria-live="polite"><small>Znajomi · {visibleMatches.length}</small>{visibleMatches.length ? visibleMatches.map(person => <div className="person" key={person.id}><PersonAvatar person={person} /><span>{person.fullName}{person.demo && <small className="sample-person">przykład</small>}</span></div>) : <p>{searching ? 'Wyszukiwanie…' : searchError || 'Nie znaleziono znajomych.'}</p>}</div>}
-          </div>
-          <div className="page-heading"><div><p className="eyebrow">TWÓJ MAŁY WIELKI ŚWIAT</p><h2>{view === 'people' ? 'Twoi ludzie.' : view === 'feed' ? 'Co nowego w Meeterze?' : view === 'game' ? 'Kto to powiedział?' : 'Czas na wspólne chwile.'}</h2><p>{view === 'people' ? 'Przeglądaj znajomych i wspólne wizyty.' : view === 'feed' ? 'Nowe funkcje, poprawki i usprawnienia w jednym miejscu.' : view === 'game' ? 'Zgadnij autora. Sprawdź, jak dobrze znasz swoich ludzi.' : 'Twoje spotkania, wizyty, eventy i podróże w jednym miejscu.'}</p></div><span className="demo-badge">Twój Meeter</span></div>
+          </SearchArea>
+          <div className="page-heading"><div><p className="eyebrow">TWÓJ MAŁY WIELKI ŚWIAT</p><h2>{view === 'admin' ? 'Administracja.' : view === 'cliques' ? 'Twoje kliki.' : view === 'people' ? 'Twoi ludzie.' : view === 'feed' ? 'Co nowego w Meeterze?' : view === 'single-game' ? 'KTO ETA SKAZAŁ' : view === 'game' ? 'Kto to powiedział?' : 'Czas na wspólne chwile.'}</h2><p>{view === 'admin' ? 'Narzędzia do zarządzania danymi Meetera.' : view === 'cliques' ? 'Ludzie, których łączą wspólne historie.' : view === 'people' ? 'Przeglądaj znajomych i wspólne wizyty.' : view === 'feed' ? 'Nowe funkcje, poprawki i usprawnienia w jednym miejscu.' : view === 'single-game' ? 'Jeden cytat. Wszyscy ludzie. Kto jest autorem?' : view === 'game' ? 'Zgadnij autora. Sprawdź, jak dobrze znasz swoich ludzi.' : 'Twoje spotkania, wizyty, eventy i podróże w jednym miejscu.'}</p></div><span className="demo-badge">Twój Meeter</span></div>
 
-          {view === 'people' ? <PeoplePanel version={people.length + calendarVersion} onAdd={() => openForm(categories[0])} /> : view === 'game' ? <QuoteGamePanel /> : view === 'feed' ? <NewsPanel /> : <>
+          {view === 'admin' && roles.includes('ROLE_ADMIN') ? <AdminPanel onImported={() => setCalendarVersion(value => value + 1)} /> : view === 'cliques' ? <CliquesPanel publicQuotesOnly={publicQuotesOnly} onTogglePublicQuotes={onTogglePublicQuotes} version={cliques.length + people.length + calendarVersion} onAdd={() => openForm(categories[7])} /> : view === 'people' ? <PeoplePanel publicQuotesOnly={publicQuotesOnly} onTogglePublicQuotes={onTogglePublicQuotes} version={people.length + calendarVersion} onAdd={() => openForm(categories[0])} /> : view === 'single-game' ? <QuoteGamePanel key="single" single /> : view === 'game' ? <QuoteGamePanel key="classic" /> : view === 'feed' ? <NewsPanel /> : <>
             <CalendarPanel month={month} entries={calendarEntries} selectedDate={selectedDate} actorId={actorId} onSelect={setSelectedDate} onMonthChange={next => { setMonth(next); setSelectedDate('') }} loading={calendarLoading} error={calendarError} retry={() => setCalendarVersion(current => current + 1)} onAdd={() => openForm(categories[2])} onInteractionChange={updateInteraction} />
           </>}
-        </section>
+        </DashboardMain>
 
-        <aside className="rightbar"><section className="card people-card"><div className="section-title"><h3>Twoi ludzie</h3><span>{visiblePeople.length}</span></div>{visiblePeople.map(person => <div key={person.id} className="person"><PersonAvatar person={person} /><span>{person.fullName}{person.demo && <small className="sample-person">przykład</small>}</span></div>)}<button className="text-button" onClick={() => openForm(categories[0])}>+ Dodaj nową osobę</button></section><section className="connection-note"><span>↗</span><h3>Bliskość zaczyna się<br />od małych gestów.</h3><p>Dobry moment, żeby zaplanować kolejne spotkanie.</p><button className="text-button" onClick={() => openForm(categories[2])}>Zaplanuj coś miłego →</button></section><p className="data-note">Interakcje zapisują się w Twojej bazie i pozostają po odświeżeniu strony. Kalendarz pokazuje też wpisy wielodniowe.</p></aside>
       </div>
 
       <dialog ref={formDialog} className="login-dialog" aria-labelledby="add-title"><button className="close-dialog" aria-label="Zamknij" onClick={() => formDialog.current.close()}>×</button><p className="eyebrow">NOWA HISTORIA</p><h2 id="add-title">{category[1]}</h2>{category[0] === 'Ludzie' ? <HumanForm key={formVersion} onSave={saveHuman} cliques={cliques} places={places} /> : category[0] === 'Kliki' ? <CliqueForm key={formVersion} places={places} onSave={saveClique} /> : category[0] === 'Miejsca' ? <PlaceForm key={formVersion} onSave={savePlace} /> : category[0] === 'Cytaty' ? <QuoteForm key={formVersion} onSave={saveQuote} /> : interactionTypes[category[0]] ? <InteractionForm key={formVersion} category={category[0]} actorId={actorId} initialDate={selectedDate} onSave={saveInteraction} /> : <form onSubmit={save}><label htmlFor="entry-name">{category[3]}</label><input id="entry-name" name="name" required maxLength={120} /><label htmlFor="entry-date">Data (opcjonalnie)</label><input key={selectedDate} id="entry-date" type="date" name="date" defaultValue={selectedDate} /><label htmlFor="entry-note">Notatka (opcjonalnie)</label><textarea id="entry-note" name="note" rows={3} maxLength={1000} /><p className="demo-note">Wpis zostanie dodany do wersji demo na czas tej sesji.</p><button className="primary submit">Zapisz</button></form>}</dialog>

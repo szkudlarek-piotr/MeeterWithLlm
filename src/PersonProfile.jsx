@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
-import { PersonAvatar } from './CalendarPanel.jsx'
+import { PersonAvatar, ParticipantsEditor } from './CalendarPanel.jsx'
+import { interactionEntry } from './InteractionForm.jsx'
 import QuoteContent from './QuoteContent.jsx'
 import TripMap from './TripMap.jsx'
 
 const sections = [['profile', 'Profil'], ['map', 'Mapa interakcji'], ['VISIT', 'Wizyty'], ['MEETING', 'Spotkania'], ['EVENT', 'Eventy'], ['TRIP', 'Podróże'], ['quotes', 'Cytaty']]
 const date = value => new Date(`${value.slice(0, 10)}T12:00:00`).toLocaleDateString('pl-PL')
 
-function PhotoForm({ person, onSave }) {
+export function PhotoForm({ person, onSave, endpoint = `/people/${person.id}/photo` }) {
   const [source, setSource] = useState('file')
   const [url, setUrl] = useState('')
   const [file, setFile] = useState(null)
@@ -29,8 +30,8 @@ function PhotoForm({ person, onSave }) {
         })
         body = { photoData: data }
       }
-      const saved = await api(`/people/${person.id}/photo`, { body })
-      onSave({ ...saved, profilePhotoUrl: saved.profilePhotoUrl?.replace(/^\/api\/people\/(?!browse\/)/, '/api/people/browse/') })
+      const saved = await api(endpoint, { body })
+      onSave({ ...saved, profilePhotoUrl: saved.profilePhotoUrl?.replace(/^\/api\/v2\/people\/(?!browse\/|self\/)/, '/api/v2/people/browse/') })
       setNotice('Zapisano zdjęcie profilowe.')
     } catch (failure) { setError(failure.message) }
     finally { setBusy(false) }
@@ -45,7 +46,7 @@ function PhotoForm({ person, onSave }) {
   </form>
 }
 
-export default function PersonProfile({ entry, onPersonChange }) {
+export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly, onTogglePublicQuotes }) {
   const [person, setPerson] = useState(entry.person)
   const [profile, setProfile] = useState(null)
   const [section, setSection] = useState('profile')
@@ -55,8 +56,26 @@ export default function PersonProfile({ entry, onPersonChange }) {
   const [error, setError] = useState('')
   const [retry, setRetry] = useState(0)
   const [profileError, setProfileError] = useState('')
-  const requestKey = `${person.id}:${section}:${page}:${retry}`
+  const [quoteRefresh, setQuoteRefresh] = useState(0)
+  const [votingId, setVotingId] = useState(null)
+  const [voteError, setVoteError] = useState('')
+  const requestKey = `${person.id}:${section}:${page}:${retry}:${section === 'quotes' && publicQuotesOnly}`
+  const refresh = section === 'quotes' ? quoteRefresh : 0
   const data = result?.key === requestKey ? result.data : null
+
+  async function voteForQuote(id, vote, retract) {
+    setVotingId(id)
+    setVoteError('')
+    try {
+      await api(`/quotes/${id}/vote`, retract ? { method: 'DELETE' } : { method: 'PUT', body: { vote } })
+      setQuoteRefresh(value => value + 1)
+    } catch (failure) {
+      setVoteError(failure.message)
+      if (failure.status === 409) setQuoteRefresh(value => value + 1)
+    } finally {
+      setVotingId(null)
+    }
+  }
   useEffect(() => {
     const controller = new AbortController()
     setProfileError('')
@@ -65,7 +84,7 @@ export default function PersonProfile({ entry, onPersonChange }) {
     return () => controller.abort()
   }, [person.id, retry])
   useEffect(() => {
-    setResult(null); setError('')
+    setError('')
     if (section === 'profile') return
     const controller = new AbortController()
     setLoading(true)
@@ -76,14 +95,17 @@ export default function PersonProfile({ entry, onPersonChange }) {
       .catch(failure => { if (!controller.signal.aborted) setError(failure.message) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [person.id, section, page, retry, requestKey])
+  }, [person.id, section, page, retry, requestKey, refresh])
   return <>
     <div className="person-detail-heading"><PersonAvatar person={person} /><h2 id="person-detail-title">{person.fullName}</h2></div>
     <nav className="person-profile-tabs" aria-label="Szczegóły osoby">{sections.map(([key, label]) => <button key={key} type="button" aria-current={section === key ? 'page' : undefined} onClick={() => { setSection(key); setPage(0) }}>{label}</button>)}</nav>
     {profileError && <p role="alert" className="field-error">{profileError} <button onClick={() => setRetry(value => value + 1)}>Spróbuj ponownie</button></p>}
     {section === 'profile' ? <>
+      {profile && <p>{profile.lastSeen
+        ? <>Ostatni raz widzieliście się {profile.lastSeen.daysAgo} {profile.lastSeen.daysAgo === 1 ? 'dzień' : 'dni'} temu. Okazją do tego było {profile.lastSeen.interactionName}.</>
+        : 'Brak zapisanych wspólnych interakcji.'}</p>}
       <dl className="person-detail-fields">
-        <div><dt>Twoje wspólne wizyty</dt><dd>{entry.visitCount}</dd></div>
+        {entry.visitCount != null && <div><dt>Twoje wspólne wizyty</dt><dd>{entry.visitCount}</dd></div>}
         {person.birthdayDate && <div><dt>Data urodzenia</dt><dd>{date(person.birthdayDate)}</dd></div>}
         {person.livesIn && <div><dt>Mieszka w</dt><dd>{person.livesIn}</dd></div>}
         {person.home && <div><dt>Dom</dt><dd>{person.home.name}</dd></div>}
@@ -94,16 +116,33 @@ export default function PersonProfile({ entry, onPersonChange }) {
       {profile && !profile.canEditPhoto && <p className="field-hint">Zdjęcie może zmienić właściciel rekordu osoby lub administrator.</p>}
       {!profile && !profileError && <p role="status" className="field-hint">Sprawdzanie uprawnień do zmiany zdjęcia…</p>}
     </> : <>
-      {loading && <p role="status">Wczytywanie…</p>}
+      {section === 'quotes' && <button type="button" className="public-quotes-toggle" aria-pressed={publicQuotesOnly}
+        onClick={() => { setPage(0); setVoteError(''); onTogglePublicQuotes() }}>Tylko publiczne cytaty</button>}
+      {loading && !data && <p role="status">Wczytywanie…</p>}
+      {section === 'quotes' && voteError && <p className="field-error" role="alert">{voteError}</p>}
       {error && <p className="field-error" role="alert">{error} <button onClick={() => setRetry(value => value + 1)}>Spróbuj ponownie</button></p>}
-      {!loading && !error && data && (section === 'map' ? <><p className="field-hint">Mapa wszystkich dostępnych wizyt, spotkań, eventów i podróży. Pokazujemy wyłącznie zapisane miejsca ze współrzędnymi.</p><TripMap places={data} title="Mapa interakcji" emptyMessage="Brak dostępnych interakcji z miejscami na mapie." /></> : <>
+      {data && (section === 'map' ? <><p className="field-hint">Mapa wszystkich dostępnych wizyt, spotkań, eventów i podróży. Pokazujemy wyłącznie zapisane miejsca ze współrzędnymi.</p><TripMap places={data} title="Mapa interakcji" emptyMessage="Brak dostępnych interakcji z miejscami na mapie." /></> : <>
         <p role="status">Liczba wyników: {data.totalElements}</p>
         {!data.content.length && <p>Brak dostępnych {section === 'quotes' ? 'cytatów' : 'interakcji'}.</p>}
-        {data.content.map(item => section === 'quotes' ? <article className="card profile-entry person-public-quote" key={item.id}><small>{item.isPublic ? 'PUBLICZNY CYTAT' : 'PRYWATNY CYTAT'}</small><QuoteContent quote={item.quote} tabIndex={0} /></article> : <article className="card profile-entry" key={item.id}>
+        {data.content.map(item => section === 'quotes' ? <article className="card profile-entry person-public-quote" key={item.id}>
+          <small>{item.isPublic ? 'PUBLICZNY CYTAT' : 'PRYWATNY CYTAT'}</small>
+          <QuoteContent quote={item.quote} tabIndex={0} />
+          <div className="quote-vote" role="group" aria-label="Ocena cytatu" aria-busy={votingId === item.id}>
+            <button type="button" aria-label={item.myVote === 1 ? 'Cofnij plusa' : 'Daj plusa'} aria-pressed={item.myVote === 1}
+              disabled={item.myVote === -1 || votingId != null || loading} onClick={() => voteForQuote(item.id, 'PLUS', item.myVote === 1)}>+</button>
+            <span aria-label={`Wynik: ${item.score}`}>{item.score > 0 ? `+${item.score}` : item.score}</span>
+            <button type="button" aria-label={item.myVote === -1 ? 'Cofnij minusa' : 'Daj minusa'} aria-pressed={item.myVote === -1}
+              disabled={item.myVote === 1 || votingId != null || loading} onClick={() => voteForQuote(item.id, 'MINUS', item.myVote === -1)}>−</button>
+          </div>
+          {item.myVote != null && <small>Twój głos: {item.myVote === 1 ? 'plus' : 'minus'}</small>}
+          {votingId === item.id && <small role="status">Zapisywanie głosu…</small>}
+        </article> : <article className="card profile-entry" key={item.id}>
           <h3>{item.name}</h3><p>{date(item.startDate)}{item.endDate && item.endDate.slice(0, 10) !== item.startDate.slice(0, 10) ? ` — ${date(item.endDate)}` : ''}</p>
           {(item.place || item.details.placeString) && <p>{[item.place?.name, item.details.placeString].filter(Boolean).join(' · ')}</p>}
           {item.longDesc && <p className="memory-description">{item.longDesc}</p>}
-          <div className="calendar-detail-people">{item.participants.map(member => <span className="calendar-person" key={member.id}><PersonAvatar person={member} /><span>{member.fullName}</span></span>)}</div>
+          {item.canAddParticipants ? <ParticipantsEditor entry={interactionEntry(item)} allowRemoval={false} onChange={updated => {
+            setResult(current => current?.key === requestKey ? { ...current, data: { ...current.data, content: current.data.content.map(existing => existing.id === item.id ? { ...existing, participants: updated.participants } : existing) } } : current)
+          }} /> : <div className="calendar-detail-people">{item.participants.map(member => <span className="calendar-person" key={member.id}><PersonAvatar person={member} /><span>{member.fullName}</span></span>)}</div>}
           {item.type === 'TRIP' && <TripMap places={item.details.places} />}
           {item.details.photoUrl && <img className="memory-photo" src={item.details.photoUrl} alt={item.details.photoName || item.name} loading="lazy" />}
         </article>)}
