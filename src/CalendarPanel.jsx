@@ -5,7 +5,6 @@ import TripMap from './TripMap.jsx'
 import InteractionEditDialog from './InteractionEditDialog.jsx'
 import { interactionEntry } from './InteractionForm.jsx'
 import PersonAvatar from './PersonAvatar.jsx'
-import ParticipantRecommendations from './ParticipantRecommendations.jsx'
 export { default as PersonAvatar } from './PersonAvatar.jsx'
 
 const types = {
@@ -53,8 +52,7 @@ export function ParticipantsEditor({ entry, actorId, onChange, allowRemoval = tr
       </span>)}</div>
       {!entry.participants?.length && <p className="calendar-empty-hint">Brak uczestników.</p>}
       {entry.canAddParticipants && <form onSubmit={event => { event.preventDefault(); if (people.length) change() }}>
-        <ParticipantRecommendations startDate={entry.date} name={entry.name} placeText={entry.details?.placeString || ''} places={entry.recommendationPlaces || []} interactionId={entry.interactionId} guests={[...(entry.participants || []), ...people]} onSelect={person => setPeople(current => current.some(item => item.id === person.id) || entry.participants?.some(item => item.id === person.id) ? current : [...current, person])} />
-        <EntityPicker label="Dodaj uczestników" source="people/participants" interactionType={entry.type} value={people} onChange={setPeople} multiple excludeIds={(entry.participants || []).map(person => person.id)} />
+        <EntityPicker label="Dodaj uczestników" source="people" value={people} onChange={setPeople} multiple excludeIds={(entry.participants || []).map(person => person.id)} />
         <button type="submit" className="primary" disabled={busy || !people.length}>{busy ? 'Zapisywanie…' : 'Dodaj wybrane osoby'}</button>
       </form>}
     </fieldset>
