@@ -44,7 +44,7 @@ These documents are mostly in Polish. Verify behavior against current source cod
 
 ## Source map
 
-Aktualności now show database-backed product news (`app_news`), not an interaction feed. See `backend/NEWS.md`; keep the news API authenticated and read-only. The standalone quote collection UI and GET collection API are removed; quote creation, single-record visibility, people cards and quote game remain.
+Aktualności now show database-backed product news (`app_news`), not an interaction feed. See `backend/NEWS.md`; keep news reads authenticated and publication admin-only with CSRF. The standalone quote collection UI and GET collection API are removed; quote creation, single-record visibility, people cards and quote game remain.
 
 | Location | Purpose |
 | --- | --- |
