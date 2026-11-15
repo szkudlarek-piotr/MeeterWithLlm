@@ -1,0 +1,6 @@
+.venv/
+artifacts/
+__pycache__/
+*.jsonl
+*.json
+*.joblib

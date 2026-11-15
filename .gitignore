@@ -7,6 +7,7 @@ set_agent_sandbo_env.ps1
 set_agent_sandbox_env.ps1
 *.log
 backend/data/
+/backend-git-backup/
 backend-starter.zip
 
 getPlaceCategories.js
