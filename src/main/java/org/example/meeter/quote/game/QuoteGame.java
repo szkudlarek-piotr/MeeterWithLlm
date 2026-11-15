@@ -39,5 +39,6 @@ public class QuoteGame extends OwnedEntity {
         people.forEach(person -> candidates.add(new GameCandidate(this, person, player)));
         for (int i = 0; i < quotes.size(); i++) rounds.add(new GameRound(this, quotes.get(i), i + 1, player));
     }
+    void useSingleScope() { scopeType = "SINGLE"; scopeLabel = "Jeden losowy cytat"; }
     void finish() { if (finishedAt == null) finishedAt = Instant.now(); }
 }

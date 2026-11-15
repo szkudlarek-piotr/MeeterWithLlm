@@ -25,17 +25,17 @@ public class AuthController {
     @PostMapping("/login") public ResponseEntity<CurrentAccount.Principal> login(@Valid @RequestBody LoginInput input, HttpServletRequest request) {
         if (input.password().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72)
             throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Hasło może mieć maksymalnie 72 bajty UTF-8.");
-        var result = service.login(input.username(), input.password(), request.getRemoteAddr(), TokenAuthenticationFilter.cookie(request));
+        var result = service.login(input.username(), input.password(), request.getRemoteAddr(), TokenAuthenticationFilter.cookie(request), request.getHeader("User-Agent"));
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).header(HttpHeaders.SET_COOKIE, cookie(result.rawToken(), AuthService.LIFETIME_SECONDS)).body(result.user());
     }
     @PostMapping("/logout") public ResponseEntity<Void> logout(HttpServletRequest request) {
-        service.revoke(TokenAuthenticationFilter.cookie(request));
+        service.logout(TokenAuthenticationFilter.cookie(request), request.getRemoteAddr(), request.getHeader("User-Agent"));
         return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, cookie("", 0)).build();
     }
-    @PostMapping("/password") public ResponseEntity<Void> password(@Valid @RequestBody PasswordInput input) {
+    @PostMapping("/password") public ResponseEntity<Void> password(@Valid @RequestBody PasswordInput input, HttpServletRequest request) {
         if (input.newPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72 || input.currentPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72)
             throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "Hasło może mieć maksymalnie 72 bajty UTF-8.");
-        service.changePassword(current.id(), input.currentPassword(), input.newPassword());
+        service.changePassword(current.id(), input.currentPassword(), input.newPassword(), request.getRemoteAddr(), request.getHeader("User-Agent"));
         return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, cookie("", 0)).build();
     }
     private String cookie(String token, long age) {

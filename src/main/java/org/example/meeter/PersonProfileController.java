@@ -1,5 +1,6 @@
 package org.example.meeter;
 
+import static org.example.meeter.quote.QuoteController.PUBLIC_ONLY_COOKIE;
 import jakarta.validation.constraints.*;
 import org.example.meeter.interactions.*;
 import org.example.meeter.quote.QuoteService;
@@ -28,7 +29,8 @@ public class PersonProfileController {
         people.browseHuman(id); return interactions.personMap(id);
     }
     @GetMapping("/quotes") public QuoteService.AuthorPage quotes(@PathVariable Long id,
-        @RequestParam(defaultValue="0") @Min(0) int page, @RequestParam(defaultValue="20") @Min(1) @Max(100) int size) {
-        people.browseHuman(id); return quotes.forAuthor(id,page,size);
+        @RequestParam(defaultValue="0") @Min(0) int page, @RequestParam(defaultValue="20") @Min(1) @Max(100) int size,
+        @CookieValue(name = PUBLIC_ONLY_COOKIE, defaultValue = "false") boolean publicOnly) {
+        people.browseHuman(id); return quotes.forAuthor(id,page,size,publicOnly);
     }
 }

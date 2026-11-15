@@ -1,5 +1,15 @@
 # Zdjęcia i profilówki
 
+## Własny profil i archiwum
+
+„Moje dane” w nagłówku otwiera edycję imienia, nazwiska, urodzin, płci, miasta i linku do Facebooka oraz zmianę portretu z pliku lub publicznego URL. `GET/PUT /api/people/self` i `GET/POST /api/people/self/photo` identyfikują osobę wyłącznie przez Human ID powiązany z sesją. Działają również dla importowanych rekordów i osób należących do innego konta, bez zmiany właściciela, domu, kliki ani metadanych tożsamości. Zapis wymaga CSRF; obowiązują dotychczasowe limity i ochrona pobierania. Odczyt `/self/photo` nie zależy od wykluczeń katalogu.
+
+Każda podmiana profilówki (także przez właściciela rekordu lub administratora) zachowuje poprzednią zawartość w oddzielnym folderze `app.photos.former-directory` (domyślnie `backend/data/photos/former-people/`). Poprzedni rekord Photo zachowuje ID, UUID i datę, otrzymuje nową losową nazwę pliku archiwum oraz typ `FORMER_HUMAN_PHOTO`. Dla legacy `profile_photo_file` bez metadanych powstaje rekord archiwalny bez wymyślania historycznej daty. Archiwum nie ma publicznego endpointu. Bieżący portret nadal wskazuje nowy rekord `PROFILE_PICTURE`. Migracja V6 rozszerza enum tabeli `photos`; wcześniejsze migracje pozostają bez zmian.
+
+Plik jest kopiowany do archiwum przed zatwierdzeniem transakcji, a z aktywnego folderu usuwany dopiero po zatwierdzeniu. Rollback usuwa nową kopię archiwalną i nowy portret, zachowując poprzedni plik i metadane. Błąd sprzątania po zatwierdzeniu pozostawia dodatkową kopię zamiast powodować utratę zdjęcia. Brak poprzedniego pliku blokuje podmianę, aby nie udawać udanej archiwizacji. Jest to aktualna reguła zastępująca wcześniejszy opis usuwania poprzednich profilówek. Backup musi obejmować oba foldery oraz bazę.
+
+Zdjęcia klik i import folderu w panelu administratora opisuje [CLIQUES.md](CLIQUES.md). Typ `CLIQUE` i przypisanie `cliques.photo_id` dodaje migracja V4; import nie uruchamia się automatycznie.
+
 ## Ikony kategorii miejsc
 
 Grafiki PNG kategorii są w `backend/data/photos/placeCategories/` (konfiguracja `app.photos.place-categories-directory`). Zalogowani odczytują je przez `GET /api/places/category-icons/{filename}`; endpoint akceptuje tylko proste nazwy PNG i pliki wewnątrz tego katalogu. Nie udostępnia innych katalogów zdjęć. Przy przenoszeniu aplikacji zachowaj ten folder obok pozostałych plików runtime.

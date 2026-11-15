@@ -1,6 +1,6 @@
 # Gra „Zgadnij autora”
 
-Każdy zalogowany użytkownik uruchamia własną rozgrywkę. Wybiera jedną własną wizytę albo zestaw własnych klik (do 10). Wizyta daje pulę autorów ze wszystkich jej uczestników, także osoby dodawanej automatycznie; kliki dają sumę ich członków. Kliki pozostają prywatnym sposobem porządkowania kontaktów. Nie zmieniono ich modelu ani zasad dostępu.
+Każdy zalogowany użytkownik uruchamia własną rozgrywkę. Wybiera jedną wizytę utworzoną przez siebie lub taką, w której uczestniczy jako osoba powiązana z kontem, albo zestaw własnych klik (do 10). Wizyta daje pulę autorów ze wszystkich jej uczestników, także osoby dodawanej automatycznie; kliki dają sumę ich członków. Kliki pozostają prywatnym sposobem porządkowania kontaktów. Nie zmieniono ich modelu ani zasad dostępu.
 
 ## Losowanie
 
@@ -46,3 +46,10 @@ Moduł: `org.example.meeter.quote.game`. Encje: `QuoteGame`, `GameRound`, `Quote
 Interfejs: `src/QuoteGamePanel.jsx`, menu „Zgadnij autora”, wybór zakresu, licznik czasu, typowanie, wynik po odpowiedzi, wznowienie z historii oraz ranking.
 
 Przy rozwoju wielu kont nie utożsamiaj ludzi po samym nazwisku. Dzisiejszy `Human` jest rekordem kartoteki właściciela; niezależne wpisy o tej samej realnej osobie wymagają jawnego modelu wspólnej tożsamości. Gra porównuje identyfikatory encji autorów z osobą powiązaną z kontem; nie scala automatycznie kartotek ani klik.
+
+## Wybór wizyty
+GET /api/quote-games/visits?q=&page=0&size=10 zwraca gotową listę wizyt (id, name, startDate, participantCount), od najnowszych dat, z ID malejąco przy remisie. Filtr nazwy jest opcjonalny. Lista i tworzenie gry stosują tę samą regułę: twórca lub rzeczywisty uczestnik po linked Human ID. Administrator nie omija tej reguły. Zwykłe API interakcji pozostaje ograniczone do właściciela. Cudza wizyta bez udziału gracza zwraca 404 przy tworzeniu gry.
+
+## KTO ETA SKAZAŁ
+User-requested separate game, alongside the original visit/clique game. POST /api/quote-games/single accepts {secondsPerQuestion}, draws one uniformly random author with public quotes and one random public quote by that author, and persists exactly one round. All Human IDs are answer candidates (including imported/foreign-owned people); only IDs and names are exposed. No author identity is revealed before answering. Existing timer, public-retraction, ownership, CSRF, self-quote and guess rules apply. scopeType=SINGLE uses existing columns; no schema migration. GET /api/quote-games/single/history and /api/quote-games/single/leaderboard serve only SINGLE games. The original history and leaderboard exclude SINGLE games. The single=true query parameter remains supported for API compatibility. The UI offers separate menu entries and resets local state when switching games.
+

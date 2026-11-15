@@ -1,5 +1,7 @@
 # Audited relationship tables
 
+Explicit maintenance exception: [PARTICIPATION_BACKFILL.md](PARTICIPATION_BACKFILL.md) documents the admin tool that adds only the acting account's linked Human to all meetings/visits/events/trips and invited weddings, including imported/foreign records. Ordinary participant mutation permissions remain unchanged. Ranking now uses participation rather than interaction creator.
+
 The conceptual many-to-many relationships use explicit JPA association entities:
 
 | Table | Entity | Related records |

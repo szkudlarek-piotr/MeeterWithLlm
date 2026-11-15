@@ -27,6 +27,8 @@ public class User {
     private String username;
     @Column(nullable = false, length = 100)
     private String passwordHash;
+    @Column(unique = true, length = 254)
+    private String email;
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "human_id", unique = true, nullable = false)
     private Human human;
@@ -39,6 +41,11 @@ public class User {
         this.username = username;
         this.passwordHash = passwordHash;
         this.human = human;
+    }
+
+    User(String username, String passwordHash, Human human, String verifiedEmail) {
+        this(username, passwordHash, human);
+        this.email = verifiedEmail;
     }
 
     public void changePassword(String passwordHash) { this.passwordHash = passwordHash; }

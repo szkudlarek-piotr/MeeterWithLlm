@@ -26,6 +26,12 @@ Nie dodano nowych zasad naliczania punktów. Metoda daty punktowej dla czterech 
 
 ## API tworzenia
 
+### Kolejność podpowiedzi osób
+
+Formularze i dopisywanie uczestników w kalendarzu przekazują `type` do `GET /api/people/participants` (MEETING, VISIT, EVENT, TRIP, FLATMATE, WEDDING). Wyniki są sortowane według liczby różnych interakcji danego typu, w których zarówno osoba powiązana z zalogowanym kontem, jak i proponowana osoba mają zachowane powiązania uczestników. Dotyczy to również administratora: interakcje innych twórców wpływają na podpowiedzi tylko przy własnym uczestnictwie. Liczymy zapisane interakcje, bez zaniku czasowego ani wag katalogu ludzi. Remisy: nazwisko, imię, ID; osoby bez historii pozostają dostępne. Filtrowanie i sortowanie poprzedzają LIMIT; liczby nie są zwracane w API.
+
+Wybór małżonków i współlokatora używa `GET /api/people?type=...` z tym samym sortowaniem, ale zachowuje dotychczasowy zakres własnych osób. Bez `type` oba endpointy zachowują domyślną kolejność. Zakres uczestników, portrety i uprawnienia zapisu nie zmieniają się. Nie ma migracji schematu.
+
 ### Zaproszenie na wesele i ranking ludzi
 
 `WeddingInput` przyjmuje także `wasIInvited` (boolean, domyślnie false), zwracane jako `details.wasIInvited`. Formularz ślubu ma pole „Byłem / byłam zaproszony(-a) na wesele”, zaznaczone początkowo. `weddings.was_i_invited` jest niezależne od `had_after` (poprawiny). Historyczne rekordy bez tej kolumny otrzymują false; nie domyślamy się zaproszenia z obecności rekordu lub listy uczestników. Przy migracji przenieś oryginalne `was_i_invited` do tej kolumny. Przed aktualizacją schematu wykonaj kopię bazy zgodnie z AGENTS.md.
@@ -78,6 +84,8 @@ Formularz wydarzenia domyślnie zachowuje obecne zdjęcie przez `photoEventId` w
 
 ## Odczyt interakcji
 
+Aktualna reguła zastępująca wcześniejsze opisy owner-only: lista i pojedynczy rekord są dostępne dla twórcy lub konta, którego powiązany Human ma zachowany wpis uczestnictwa. Dotyczy wszystkich typów i kalendarza. Filtr działa przed liczeniem i paginacją, bez wyjątku administratora i bez dopasowania po nazwisku. Usunięcie własnego uczestnictwa odbiera dostęp uczestnikowi, ale nie twórcy. Edycja i dodawanie uczestników pozostają ograniczone do twórcy; zasady usuwania uczestników nie zmieniają się. Zdjęcia eventów nadal wymagają własności i ich URL jest pomijany w cudzych interakcjach. Nie jest potrzebna migracja ani backfill.
+
 `GET /api/interactions` przyjmuje `page` (od 0), `size` (1–100), `q`, opcjonalne `from`, `to` oraz `type`: `MEETING`, `VISIT`, `EVENT`, `TRIP`, `FLATMATE`, `WEDDING`. Zwraca `content`, `page`, `size`, `totalElements`, `hasNext`.
 
 Filtr dat zwraca zakresy **nakładające się** na podany przedział, a nie tylko wpisy zaczynające się w nim. Dla okresów trwających bez końca przyjmuje brak górnej granicy.
@@ -85,6 +93,10 @@ Filtr dat zwraca zakresy **nakładające się** na podany przedział, a nie tylk
 `GET /api/interactions/{id}` zwraca własny rekord albo 404. Odpowiedź zawiera wspólne pola, podsumowania uczestników, miejsce oraz obiekt `details` z polami konkretnego typu. Wszystkie operacje tworzenia wymagają sesji i CSRF.
 
 ## Profil osoby
+
+Update: person-profile interaction cards allow the interaction creator to add participants using the same picker and POST `/api/interactions/{id}/participants` as the calendar. This applies to meetings, visits, events and trips, including profiles opened from clique members. `canAddParticipants` preserves the existing creator check; neither participation nor administrator visibility grants this permission. Participant removal stays in the calendar, and foreign event photos remain omitted. Successful additions update the card immediately; failed saves keep the selection and show an error. This supersedes the older read-only profile description below. No schema migration is required.
+
+Sekcja Profil pokazuje `lastSeen` (`daysAgo`, `interactionName`) z pojedynczego endpointu profilu albo null przy braku wspólnej historii. Ostatnia interakcja wymaga zachowanych powiązań uczestników zarówno oglądanej osoby, jak i Human zalogowanego konta, również dla administratora i niezależnie od twórcy. Uwzględnia wszystkie typy, pomija przyszłe początki, sortuje po końcu (dla trwających okresów po bieżącym czasie), następnie początku i ID malejąco. Liczba dni jest różnicą lokalnych dat; interakcja trwająca oznacza zero dni. Nie wymaga migracji schematu.
 
 DTO pojedynczego profilu (`GET /api/people/browse/{id}`), w tym dom i stolica kliki, jest budowane w transakcji MeeterService. Nie mapuj encji zwróconej przez browseHuman w kontrolerze: przy wyłączonym open-in-view relacje lazy nie są wtedy dostępne i profil może kończyć się błędem zależnie od przypisanych relacji.
 

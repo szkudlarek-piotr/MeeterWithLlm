@@ -17,10 +17,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class PhotoStorage {
     private final RemotePhotoClient client;
     private final Path directory;
+    private final Path formerDirectory;
     private final org.example.meeter.multimedia.photo.PhotoRepository photos;
     public PhotoStorage(RemotePhotoClient client, @Value("${app.photos.directory:./data/photos/people}") String directory,
-                        org.example.meeter.multimedia.photo.PhotoRepository photos) {
+                        org.example.meeter.multimedia.photo.PhotoRepository photos,
+                        @Value("${app.photos.former-directory:./data/photos/former-people}") String formerDirectory) {
         this.client = client; this.directory = Path.of(directory).toAbsolutePath().normalize(); this.photos=photos;
+        this.formerDirectory = Path.of(formerDirectory).toAbsolutePath().normalize();
     }
 
     public void importPhoto(Human human, String url) {
@@ -31,7 +34,6 @@ public class PhotoStorage {
         if (bytes.length > RemotePhotoClient.MAX_BYTES) throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,"Zdjęcie może mieć maksymalnie 4 MB.");
         String file = human.getUuid() + "-" + UUID.randomUUID() + ".jpg";
         Path destination = path(file);
-        String previous = human.getProfilePhotoFile();
         try {
             Files.createDirectories(directory);
             try (var input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
@@ -55,6 +57,7 @@ public class PhotoStorage {
                     if (!ImageIO.write(avatar, "jpg", destination.toFile())) throw new IOException("Brak kodera JPEG.");
                 } finally { reader.dispose(); }
             }
+            archivePrevious(human);
             human.setProfilePhotoFile(file);
             var photo = new org.example.meeter.multimedia.photo.Photo();
             photo.setPhotoName(file);
@@ -64,7 +67,6 @@ public class PhotoStorage {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                     @Override public void afterCompletion(int status) {
                         if (status != STATUS_COMMITTED) remove(file);
-                        else if (previous != null) remove(previous);
                     }
                 });
             }
@@ -72,7 +74,41 @@ public class PhotoStorage {
         } catch (IOException exception) {
             remove(file);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nie można odczytać zdjęcia. Użyj pliku JPG, PNG lub GIF do 16 megapikseli.");
+        } catch (RuntimeException exception) {
+            remove(file);
+            throw exception;
         }
+    }
+
+    private void archivePrevious(Human human) throws IOException {
+        var previous = human.getProfilePhoto();
+        if (previous == null && human.getProfilePhotoFile() == null) return;
+        if (previous != null && previous.getPhotoType() != org.example.meeter.multimedia.photo.PhotoType.PROFILE_PICTURE)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Poprzednie zdjęcie ma nieprawidłowy typ.");
+        Path source = previous == null ? path(human.getProfilePhotoFile()) : importedPath(previous.getPhotoName());
+        Files.createDirectories(formerDirectory);
+        if (formerDirectory.toRealPath().equals(directory.toRealPath())) throw new IOException("Archiwum wymaga osobnego folderu.");
+        String suffix = source.getFileName().toString().replaceFirst("^.*\\.", "").toLowerCase(java.util.Locale.ROOT);
+        if (!java.util.Set.of("jpg", "jpeg", "png", "gif").contains(suffix)) suffix = "img";
+        String archivedName = UUID.randomUUID() + "." + suffix;
+        Path archived = formerDirectory.resolve(archivedName);
+        // Copy before commit; retain the active file until the database commit succeeds.
+        Files.copy(source, archived);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCompletion(int status) {
+                try {
+                    if (status == STATUS_COMMITTED) Files.deleteIfExists(source);
+                    else Files.deleteIfExists(archived);
+                } catch (IOException ignored) { /* Retain an extra copy rather than lose a photo. */ }
+            }
+        });
+        if (previous == null) {
+            previous = new org.example.meeter.multimedia.photo.Photo();
+            // The historical creation date is unknown; do not invent it.
+        }
+        previous.setPhotoName(archivedName);
+        previous.setPhotoType(org.example.meeter.multimedia.photo.PhotoType.FORMER_HUMAN_PHOTO);
+        photos.save(previous);
     }
     public Path path(String filename) {
         if (filename == null || !filename.matches("[a-f0-9-]{73}\\.jpg"))

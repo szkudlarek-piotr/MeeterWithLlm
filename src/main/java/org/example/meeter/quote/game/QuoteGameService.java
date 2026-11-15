@@ -30,6 +30,14 @@ public class QuoteGameService {
         game.getRounds().getFirst().start(seconds);
         return view(games.saveAndFlush(game));
     }
+    public View createSingle(SingleInput input) {
+        var selection = pool.drawSingle();
+        int seconds = input.secondsPerQuestion() == null ? 30 : input.secondsPerQuestion();
+        QuoteGame game = new QuoteGame(users.getReferenceById(account.id()), null, List.of(), selection.people(), selection.quotes(), seconds);
+        game.useSingleScope();
+        game.getRounds().getFirst().start(seconds);
+        return view(games.saveAndFlush(game));
+    }
     private QuoteGame own(Long id) {
         return games.ownedForUpdate(id, account.id()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Nie znaleziono rozgrywki."));
     }
@@ -72,8 +80,10 @@ public class QuoteGameService {
         games.flush(); return view(game);
     }
     @Transactional(readOnly = true)
-    public History history(int page) {
-        var result = games.findByCreatedById(account.id(), PageRequest.of(page, 20, Sort.by(Sort.Direction.DESC, "createdAt", "id")));
+    public History history(int page, boolean single) {
+        var pageable = PageRequest.of(page, 20, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+        var result = single ? games.findByCreatedByIdAndScopeType(account.id(), "SINGLE", pageable)
+            : games.findByCreatedByIdAndScopeTypeNot(account.id(), "SINGLE", pageable);
         return new History(result.stream().map(this::summary).toList(), page, result.hasNext());
     }
     private Summary summary(QuoteGame game) {
@@ -101,16 +111,16 @@ public class QuoteGameService {
             .sorted(Comparator.comparing(Person::fullName).thenComparing(Person::id)).toList(), question, answers, game.getSecondsPerQuestion(), Instant.now());
     }
     @Transactional(readOnly = true)
-    public List<Score> leaderboard() {
+    public List<Score> leaderboard(boolean single) {
         var sorted = new ArrayList<>(games.scores());
-        sorted.removeIf(row -> row.getEligible() == 0);
+        sorted.removeIf(row -> row.getEligible() == 0 || "SINGLE".equals(row.getScopeLabel()) != single);
         sorted.sort(Comparator.<QuoteGameRepository.ScoreRow>comparingDouble(row -> (double) row.getCorrect() / row.getEligible()).reversed()
             .thenComparingLong(QuoteGameRepository.ScoreRow::getElapsedMillis).thenComparing(QuoteGameRepository.ScoreRow::getFinishedAt).thenComparing(QuoteGameRepository.ScoreRow::getGameId));
         Set<Long> players = new HashSet<>(); List<Score> result = new ArrayList<>();
         for (var row : sorted) {
             if (!players.add(row.getPlayerId())) continue;
             result.add(new Score(result.size() + 1, row.getGameId(), row.getPlayerId(), (row.getFirstName() + " " + (row.getSurname() == null ? "" : row.getSurname())).trim(),
-                row.getScopeLabel().equals("VISIT") ? "Wizyta" : "Kliki", row.getCorrect().intValue(), row.getEligible().intValue(),
+                row.getScopeLabel().equals("SINGLE") ? "KTO ETA SKAZAŁ" : row.getScopeLabel().equals("VISIT") ? "Wizyta" : "Kliki", row.getCorrect().intValue(), row.getEligible().intValue(),
                 100.0 * row.getCorrect() / row.getEligible(), row.getElapsedMillis(), row.getFinishedAt()));
             if (result.size() == 100) break;
         }

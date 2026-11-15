@@ -5,7 +5,12 @@ import java.util.UUID;
 public final class ApiModels {
  private ApiModels() {}
  public record PublicQuoteView(Long id,String quote) {}
- public record PersonProfileView(HumanView person,boolean canEditPhoto) {}
+ public record SelfProfileInput(@NotBlank @Size(max=100) String name,@Size(max=100) String surname,
+  @PastOrPresent java.time.LocalDate birthdayDate,
+  @Size(max=2048) @Pattern(regexp="(?i)^https?://[^\\s]+$",message="Podaj adres HTTP lub HTTPS.") String fbLink,
+  @Size(max=1) String gender,@Size(max=200) String livesIn) {}
+ public record LastSeenView(long daysAgo,String interactionName) {}
+ public record PersonProfileView(HumanView person,boolean canEditPhoto,LastSeenView lastSeen) {}
  public record PersonBrowseView(HumanView person,long visitCount,PublicQuoteView publicQuote) {}
  public record PeoplePage(java.util.List<PersonBrowseView> content,int page,int size,long totalElements,boolean hasNext) {}
  public record PlaceInput(@NotBlank @Size(max=200) String name,

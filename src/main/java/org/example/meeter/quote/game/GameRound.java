@@ -12,6 +12,8 @@ import org.example.meeter.quote.Quote;
     @UniqueConstraint(columnNames = {"game_id", "position"}), @UniqueConstraint(columnNames = {"game_id", "quote_id"})})
 @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class GameRound extends RelationshipRecord {
+    @Column(nullable = false, unique = true, updatable = false)
+    private java.util.UUID uuid = java.util.UUID.randomUUID();
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(nullable = false) private QuoteGame game;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(nullable = false) private Quote quote;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(nullable = false) private Human correctAuthor;

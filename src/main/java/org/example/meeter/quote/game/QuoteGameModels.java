@@ -10,6 +10,7 @@ public final class QuoteGameModels {
     public record CreateInput(@Positive Long visitId, @Size(max = 10) Set<@NotNull @Positive Long> cliqueIds,
                               @Min(10) @Max(120) Integer secondsPerQuestion) {}
     public record GuessInput(@NotNull @Positive Long roundId, @Positive Long authorId) {}
+    public record SingleInput(@Min(10) @Max(120) Integer secondsPerQuestion) {}
     public record Person(Long id, String fullName) { static Person of(Human h) { return h == null ? null : new Person(h.getId(), h.getFullName()); } }
     public record Question(Long roundId, int position, String quote, Instant deadlineAt) {}
     public record Answer(Long roundId, int position, String quote, Person guessedAuthor, Person correctAuthor,

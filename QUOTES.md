@@ -4,6 +4,8 @@ Moduł `org.example.meeter.quote` zawiera `Quote`, `QuoteRepository`, `QuoteServ
 
 ## API
 
+Podpowiedzi `GET /api/quotes/authors` są sortowane malejąco po liczbie cytatów widocznych dla bieżącego konta (publiczne, prywatne własnego autora według Human ID, wszystkie dla administratora). Prywatne cudze cytaty nie wpływają na kolejność zwykłego konta; cytaty bez autora nie podnoszą żadnego wyniku. Remisy rozstrzygają nazwisko, imię i ID. Wyszukiwanie, wykluczenie my_exes i sortowanie odbywają się przed LIMIT. Osoby bez cytatów nadal można wybrać. Liczby nie są zwracane w podpowiedziach.
+
 - `POST /api/quotes`: utworzenie cytatu, odpowiedź 201.
 - `GET /api/quotes/{id}`: dostępny cytat lub 404 dla nieistniejącego/niedostępnego ID.
 Osobny endpoint kolekcji `GET /api/quotes` został usunięty. Cytaty są prezentowane w kafelkach ludzi i grze.
@@ -26,9 +28,13 @@ Wszystkie endpointy wymagają sesji. POST wymaga również CSRF. Publiczny cytat
 
 Role `ROLE_USER` i `ROLE_ADMIN` są przechowywane w `user_roles`. Role trafiają do DTO logowania i `/api/auth/me`, a tokenowy filtr uwierzytelniania używa ich jako authorities. `RoleBootstrap` uzupełnia `ROLE_USER` istniejącym kontom; przy lokalnym `app.dev.bootstrap=true` przypisuje kontu `pszkudlarek` także `ROLE_ADMIN`. Poza developmentem lokalny bootstrap należy wyłączyć. Nie ma publicznego endpointu nadawania ról.
 
+`PUT /api/quotes/{id}/vote` przyjmuje `{vote: PLUS | MINUS}`, wymaga sesji i CSRF, a przyjmuje głosy tylko na cytaty widoczne dla danego konta. Konto może mieć jeden aktywny głos. Ponowienie tej samej oceny zwraca 204, a próba oddania przeciwnego głosu przed cofnięciem zwraca 409. DELETE /api/quotes/{id}/vote cofa własny głos i zwraca 204 także przy ponowieniu. Obowiązują te same zasady sesji, CSRF i widoczności. Migracja V5 zakłada tabelę głosów z unikalną parą cytat–konto.
+
 ## Interfejs i dane
 
-Modal osoby ma zakładkę Cytaty: `GET /api/people/browse/{id}/quotes?page=0&size=20` (rozmiar 1–100). Zwraca standardowe pola strony i cytaty danego autora, sortowane po `addTime`, potem ID malejąco. Stosuje ten sam filtr widoczności co pojedynczy cytat: zalogowani widzą publiczne, konto powiązane z autorem oraz admin również prywatne. Liczność i paginacja obejmują wyłącznie widoczne cytaty. Nie przywraca globalnego endpointu kolekcji `/api/quotes`. Renderer pozostaje QuoteContent.
+Przełącznik „Tylko publiczne cytaty” obok motywu i w zakładce Cytaty zapisuje preferencję w cookie `meeter-public-quotes`. Gdy jest włączony, backend filtruje listę autora przed paginacją oraz zwraca 404 przy odczycie, ocenie i cofnięciu oceny prywatnego cytatu, również administratorowi i autorowi. Wyłączenie przywraca widoczność wynikającą z uprawnień konta.
+
+Modal osoby ma zakładkę Cytaty: `GET /api/people/browse/{id}/quotes?page=0&size=20` (rozmiar 1–100). Zwraca standardowe pola strony i cytaty danego autora, sortowane przed paginacją malejąco według wyniku (plusy minus minusy), następnie według `addTime` i ID. Każdy wpis zawiera `score` i `myVote` (1, -1 lub null). Stosuje ten sam filtr widoczności co pojedynczy cytat: zalogowani widzą publiczne, konto powiązane z autorem oraz admin również prywatne. Liczność i paginacja obejmują wyłącznie widoczne cytaty. Nie przywraca globalnego endpointu kolekcji `/api/quotes`. Renderer pozostaje QuoteContent.
 
 `src/QuoteContent.jsx` jest wspólnym rendererem cytatów dla listy ludzi i gry (pytanie oraz odpowiedź). Cytaty są wyśrodkowane. HTML jest parsowany w nieaktywnym elemencie template i przebudowywany jako elementy React z ograniczonej listy tagów formatujących: pogrubienie, kursywa, podkreślenie, przekreślenie, akapity, podziały wierszy, listy, indeksy, kod. Wszystkie atrybuty są odrzucane, w tym style i obsługa zdarzeń; skrypty, iframe, SVG i podobne aktywne treści są pomijane. Obrazy i odnośniki nie są osadzane; tekst odnośnika pozostaje. Nie wstawiaj surowego HTML przez dangerouslySetInnerHTML. Zwykły tekst i łamania wierszy pozostają obsługiwane. Dane źródłowe cytatu w bazie nie są zmieniane.
 

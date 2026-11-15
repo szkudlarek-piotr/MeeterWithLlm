@@ -35,6 +35,17 @@ public class InteractionService {
         Long id = account.id();
         return (root, query, cb) -> cb.equal(root.get("createdBy").get("id"), id);
     }
+    private Specification<Interaction> visible() {
+        Long owner = account.id();
+        Long self = account.principal().humanId();
+        return (root, query, cb) -> {
+            var membership = query.subquery(Long.class);
+            var link = membership.from(InteractionParticipant.class);
+            membership.select(link.get("id")).where(cb.equal(link.get("interaction"), root),
+                cb.equal(link.get("human").get("id"), self));
+            return cb.or(cb.equal(root.get("createdBy").get("id"), owner), cb.exists(membership));
+        };
+    }
     private Human human(Long id) {
         return humans.findOne(this.<Human>owned().and((root, q, cb) -> cb.equal(root.get("id"), id)))
             .orElseThrow(() -> missing("osoby"));
@@ -68,7 +79,10 @@ public class InteractionService {
         return view(interactions.save(item));
     }
     private View view(Interaction item) {
-        return InteractionModels.view(item, account.id(), account.principal().humanId());
+        View result = InteractionModels.view(item, account.id(), account.principal().humanId());
+        // Event image reads and reuse retain their separate ownership requirement.
+        if (!item.getCreatedBy().getId().equals(account.id())) result.details().remove("photoUrl");
+        return result;
     }
 
     @Transactional
@@ -275,11 +289,11 @@ public class InteractionService {
     }
 
     public View get(Long id) {
-        return view(interactions.findOne(this.<Interaction>owned().and((root, q, cb) -> cb.equal(root.get("id"), id)))
+        return view(interactions.findOne(visible().and((root, q, cb) -> cb.equal(root.get("id"), id)))
             .orElseThrow(() -> missing("interakcji")));
     }
 
-    // Profile reads have their own visibility rules; ordinary interaction APIs stay owner-only.
+    // Profile reads additionally support administrator visibility.
     private Specification<Interaction> profileFilter(Long personId, InteractionType type) {
         Long viewer = account.principal().humanId();
         boolean admin = account.isAdmin();
@@ -305,9 +319,9 @@ public class InteractionService {
         var result = interactions.findAll(profileFilter(personId, type), PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "startDate", "id")));
         return new PageView(result.stream().map(item -> {
             var value = view(item);
-            // The profile is read-only, and does not grant access to owner-only event images.
+            // Profile additions use the existing creator-only endpoint; removal stays in the calendar.
             if (!item.getCreatedBy().getId().equals(account.id())) value.details().remove("photoUrl");
-            return new View(value.id(), value.uuid(), value.createdAt(), value.type(), value.name(), value.longDesc(), value.startDate(), value.endDate(), value.participants(), value.place(), value.details(), false, Set.of());
+            return new View(value.id(), value.uuid(), value.createdAt(), value.type(), value.name(), value.longDesc(), value.startDate(), value.endDate(), value.participants(), value.place(), value.details(), value.canAddParticipants(), Set.of());
         }).toList(), page, size, result.getTotalElements(), result.hasNext());
     }
 
@@ -332,7 +346,7 @@ public class InteractionService {
         if (from != null) dates(from.atStartOfDay(), from.atStartOfDay());
         if (to != null) dates(to.atStartOfDay(), to.atStartOfDay());
         if (from != null && to != null && to.isBefore(from)) throw bad("Nieprawidłowy zakres dat.");
-        Specification<Interaction> filter = owned();
+        Specification<Interaction> filter = visible();
         if (from != null) filter = filter.and((root, q, cb) -> cb.or(
             cb.greaterThanOrEqualTo(root.get("endDate"), from.atStartOfDay()), cb.isNull(root.get("endDate"))));
         if (to != null) filter = filter.and((root, q, cb) -> cb.lessThan(root.get("startDate"), to.plusDays(1).atStartOfDay()));

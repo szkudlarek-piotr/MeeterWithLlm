@@ -10,13 +10,13 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
-@RequestMapping("/api/people/{id}/photo")
+@RequestMapping("/api/people")
 public class PhotoController {
     private final MeeterService service;
     private final PhotoStorage storage;
     public PhotoController(MeeterService service, PhotoStorage storage) { this.service=service; this.storage=storage; }
     public record PhotoInput(@Size(max=2048) String url, @Size(max=5592408) String photoData) {}
-    @PostMapping public ApiModels.HumanView update(@PathVariable Long id,@Valid @RequestBody PhotoInput input) {
+    @PostMapping("/{id}/photo") public ApiModels.HumanView update(@PathVariable Long id,@Valid @RequestBody PhotoInput input) {
         boolean url = input.url()!=null && !input.url().isBlank();
         boolean data = input.photoData()!=null && !input.photoData().isBlank();
         if (url == data) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Wybierz jedno źródło zdjęcia.");
@@ -26,7 +26,12 @@ public class PhotoController {
         catch(IllegalArgumentException exception) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Nieprawidłowy plik zdjęcia."); }
         return service.updatePhotoBytes(id,bytes);
     }
-    @GetMapping public ResponseEntity<Resource> image(@PathVariable Long id) {
+    @PostMapping("/self/photo") public ApiModels.HumanView updateSelf(@Valid @RequestBody PhotoInput input) {
+        update(service.selfHuman().getId(),input);
+        return service.selfProfile();
+    }
+    @GetMapping("/self/photo") public ResponseEntity<Resource> selfImage() { return imageForHuman(service.selfHuman()); }
+    @GetMapping("/{id}/photo") public ResponseEntity<Resource> image(@PathVariable Long id) {
         return imageForHuman(service.ownHuman(id));
     }
     public ResponseEntity<Resource> imageForHuman(Human human) {

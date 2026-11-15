@@ -3,6 +3,7 @@ package org.example.meeter.quote;
 import static org.example.meeter.quote.QuoteModels.*;
 import org.example.meeter.MeeterService;
 import org.example.meeter.auth.*;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -15,10 +16,14 @@ public class QuoteService {
     private final CurrentAccount account;
     private final UserRepository users;
     private final MeeterService people;
-    public QuoteService(QuoteRepository quotes, CurrentAccount account, UserRepository users, MeeterService people) {
+    private final QuoteVoteRepository votes;
+    public QuoteService(QuoteRepository quotes, CurrentAccount account, UserRepository users, MeeterService people,
+                        QuoteVoteRepository votes) {
         this.quotes = quotes; this.account = account; this.users = users; this.people = people;
+        this.votes = votes;
     }
-    public Specification<Quote> visibleToCurrentAccount() {
+    private Specification<Quote> visibleToCurrentAccount(boolean publicOnly) {
+        if (publicOnly) return (root, query, cb) -> cb.isTrue(root.get("isPublic"));
         if (account.isAdmin()) return (root, query, cb) -> cb.conjunction();
         Long owner = account.id();
         Long human = account.principal().humanId();
@@ -36,15 +41,50 @@ public class QuoteService {
         quote.assignOwner(users.getReferenceById(account.id()));
         return view(quotes.saveAndFlush(quote));
     }
-    public View get(Long id) {
-        return view(quotes.findOne(visibleToCurrentAccount().and((root, query, cb) -> cb.equal(root.get("id"), id)))
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Nie znaleziono cytatu.")));
+    public View get(Long id, boolean publicOnly) {
+        return view(visibleQuote(id, publicOnly));
     }
-    public record AuthorPage(java.util.List<View> content, int page, int size, long totalElements, boolean hasNext) {}
-    public AuthorPage forAuthor(Long authorId, int page, int size) {
-        var result = quotes.findAll(visibleToCurrentAccount().and((root, query, cb) -> cb.equal(root.get("author").get("id"), authorId)),
-            org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "addTime", "id")));
-        return new AuthorPage(result.stream().map(this::view).toList(), page, size, result.getTotalElements(), result.hasNext());
+
+    private Quote visibleQuote(Long id, boolean publicOnly) {
+        return quotes.findOne(visibleToCurrentAccount(publicOnly).and((root, query, cb) -> cb.equal(root.get("id"), id)))
+            .orElseThrow(QuoteService::missing);
+    }
+
+    @Transactional
+    public void vote(Long id, Vote vote, boolean publicOnly) {
+        Quote quote = lockVisibleQuote(id, publicOnly);
+        Long voterId = account.id();
+        var existing = votes.findByQuoteIdAndVoterId(id, voterId);
+        if (existing.isPresent()) {
+            if (existing.get().value() != vote.value)
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Twój głos na ten cytat jest już zapisany.");
+            return;
+        }
+        votes.save(new QuoteVote(quote, users.getReferenceById(voterId), vote.value));
+    }
+
+    @Transactional
+    public void retractVote(Long id, boolean publicOnly) {
+        lockVisibleQuote(id, publicOnly);
+        votes.findByQuoteIdAndVoterId(id, account.id()).ifPresent(votes::delete);
+    }
+
+    private Quote lockVisibleQuote(Long id, boolean publicOnly) {
+        quotes.lockById(id).orElseThrow(QuoteService::missing);
+        return visibleQuote(id, publicOnly);
+    }
+
+    private static ResponseStatusException missing() {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Nie znaleziono cytatu.");
+    }
+
+    public record AuthorPage(java.util.List<RankedView> content, int page, int size, long totalElements, boolean hasNext) {}
+    public AuthorPage forAuthor(Long authorId, int page, int size, boolean publicOnly) {
+        boolean seePrivate = !publicOnly && (account.isAdmin() || authorId.equals(account.principal().humanId()));
+        var result = quotes.rankedByAuthor(authorId, seePrivate, account.id(), PageRequest.of(page, size));
+        return new AuthorPage(result.stream()
+            .map(row -> RankedView.of(view(row.getQuote()), row.getScore(), row.getMyVote()))
+            .toList(), page, size, result.getTotalElements(), result.hasNext());
     }
     private View view(Quote quote) {
         View result = View.of(quote);

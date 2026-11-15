@@ -12,6 +12,8 @@ public interface QuoteGameRepository extends JpaRepository<QuoteGame, Long> {
     @Query("select g from QuoteGame g where g.id=:id and g.createdBy.id=:owner")
     Optional<QuoteGame> ownedForUpdate(@Param("id") Long id, @Param("owner") Long owner);
     Page<QuoteGame> findByCreatedById(Long owner, Pageable pageable);
+    Page<QuoteGame> findByCreatedByIdAndScopeType(Long owner, String scopeType, Pageable pageable);
+    Page<QuoteGame> findByCreatedByIdAndScopeTypeNot(Long owner, String scopeType, Pageable pageable);
 
     interface ScoreRow {
         Long getGameId(); Long getPlayerId(); String getFirstName(); String getSurname(); String getScopeLabel();

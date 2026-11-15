@@ -14,7 +14,10 @@ import org.springframework.web.bind.annotation.*;
 @Validated
 public class InteractionController {
     private final InteractionService service;
-    public InteractionController(InteractionService service) { this.service = service; }
+
+    public InteractionController(InteractionService service) {
+        this.service = service;
+    }
 
     @GetMapping("/interactions")
     public PageView list(
@@ -27,38 +30,76 @@ public class InteractionController {
         return service.list(from, to, type, q, page, size);
     }
     @GetMapping("/interactions/{id}")
-    public View get(@PathVariable @Positive Long id) { return service.get(id); }
+    public View get(@PathVariable @Positive Long id) {
+        return service.get(id);
+    }
+
     @PostMapping("/interactions/{id}/participants")
     public View addParticipants(@PathVariable @Positive Long id, @Valid @RequestBody ParticipantsInput input) {
         return service.addParticipants(id, input);
     }
+
     @DeleteMapping("/interactions/{id}/participants/{humanId}") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void removeParticipant(@PathVariable @Positive Long id, @PathVariable @Positive Long humanId) {
         service.removeParticipant(id, humanId);
     }
     @PostMapping("/meetings") @ResponseStatus(HttpStatus.CREATED)
-    public View meeting(@Valid @RequestBody MeetingInput input) { return service.meeting(input); }
+    public View meeting(@Valid @RequestBody MeetingInput input) {
+        return service.meeting(input);
+    }
+
     @PostMapping("/visits") @ResponseStatus(HttpStatus.CREATED)
-    public View visit(@Valid @RequestBody VisitInput input) { return service.visit(input); }
+    public View visit(@Valid @RequestBody VisitInput input) {
+        return service.visit(input);
+    }
+
     @PostMapping("/events") @ResponseStatus(HttpStatus.CREATED)
-    public View event(@Valid @RequestBody EventInput input) { return service.event(input); }
+    public View event(@Valid @RequestBody EventInput input) {
+        return service.event(input);
+    }
+
     @PostMapping("/trips") @ResponseStatus(HttpStatus.CREATED)
-    public View trip(@Valid @RequestBody TripInput input) { return service.trip(input); }
+    public View trip(@Valid @RequestBody TripInput input) {
+        return service.trip(input);
+    }
+
     @PostMapping("/flatmates") @ResponseStatus(HttpStatus.CREATED)
-    public View flatmate(@Valid @RequestBody FlatmateInput input) { return service.flatmate(input); }
+    public View flatmate(@Valid @RequestBody FlatmateInput input) {
+        return service.flatmate(input);
+    }
+
     @PostMapping("/weddings") @ResponseStatus(HttpStatus.CREATED)
-    public View wedding(@Valid @RequestBody WeddingInput input) { return service.wedding(input); }
+    public View wedding(@Valid @RequestBody WeddingInput input) {
+        return service.wedding(input);
+    }
 
     @PutMapping("/meetings/{id}")
-    public View editMeeting(@PathVariable @Positive Long id, @Valid @RequestBody MeetingInput input) { return service.editMeeting(id, input); }
+    public View editMeeting(@PathVariable @Positive Long id, @Valid @RequestBody MeetingInput input) {
+        return service.editMeeting(id, input);
+    }
+
     @PutMapping("/visits/{id}")
-    public View editVisit(@PathVariable @Positive Long id, @Valid @RequestBody VisitInput input) { return service.editVisit(id, input); }
+    public View editVisit(@PathVariable @Positive Long id, @Valid @RequestBody VisitInput input) {
+        return service.editVisit(id, input);
+    }
+
     @PutMapping("/events/{id}")
-    public View editEvent(@PathVariable @Positive Long id, @Valid @RequestBody EventInput input) { return service.editEvent(id, input); }
+    public View editEvent(@PathVariable @Positive Long id, @Valid @RequestBody EventInput input) {
+        return service.editEvent(id, input);
+    }
+
     @PutMapping("/trips/{id}")
-    public View editTrip(@PathVariable @Positive Long id, @Valid @RequestBody TripInput input) { return service.editTrip(id, input); }
+    public View editTrip(@PathVariable @Positive Long id, @Valid @RequestBody TripInput input) {
+        return service.editTrip(id, input);
+    }
+
     @PutMapping("/flatmates/{id}")
-    public View editFlatmate(@PathVariable @Positive Long id, @Valid @RequestBody FlatmateInput input) { return service.editFlatmate(id, input); }
+    public View editFlatmate(@PathVariable @Positive Long id, @Valid @RequestBody FlatmateInput input) {
+        return service.editFlatmate(id, input);
+    }
+
     @PutMapping("/weddings/{id}")
-    public View editWedding(@PathVariable @Positive Long id, @Valid @RequestBody WeddingInput input) { return service.editWedding(id, input); }
+    public View editWedding(@PathVariable @Positive Long id, @Valid @RequestBody WeddingInput input) {
+        return service.editWedding(id, input);
+    }
 }

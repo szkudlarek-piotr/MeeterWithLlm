@@ -18,18 +18,23 @@ public final class InteractionModels {
 
     public record MeetingInput(@NotNull @Valid Details details, @NotNull LocalDate date,
                                @Positive Long placeId, @Size(max = 200) String placeString) {}
+
     public record VisitInput(@NotNull @Valid Details details, @NotNull LocalDateTime visitDate,
                              @NotNull @Min(1) @Max(3650) Integer duration, @Positive Long placeId) {}
+
     public record EventInput(@NotNull @Valid Details details, @NotNull LocalDateTime startDate,
                              @NotNull LocalDateTime stopDate, LocalDateTime meComingDate, LocalDateTime meLeavingDate,
                              @Positive Long placeId,
                              @Size(max = 255) String photoName, @Size(max = 200) String placeString,
                              @Size(max = 2048) String photoUrl, @Size(max = 5592408) String photoData,
                              @Positive Long photoEventId) {}
+
     public record TripInput(@NotNull @Valid Details details, @NotNull LocalDateTime startDate,
                             @NotNull LocalDateTime endDate, @NotNull @Size(max = 100) Set<@NotNull @Positive Long> placeIds) {}
+
     public record FlatmateInput(@NotNull @Valid Details details, @NotNull @Positive Long humanId,
                                 @NotNull LocalDate startDate, LocalDate stopDate, @Positive Long placeId) {}
+
     public record WeddingInput(@NotNull @Valid Details details, @NotNull LocalDateTime dateTime,
                                @NotNull @Positive Long groomId, @NotNull @Positive Long brideId,
                                @Positive Long ceremonyPlaceId, @Positive Long partyPlaceId,
@@ -47,6 +52,7 @@ public final class InteractionModels {
             return new PersonView(value.id(), value.uuid(), value.fullName(), photo, value.demo());
         }
     }
+
     public record View(Long id, UUID uuid, Instant createdAt, InteractionType type, String name, String longDesc,
                        LocalDateTime startDate, LocalDateTime endDate, List<PersonView> participants,
                        ApiModels.PlaceView place, Map<String, Object> details,
@@ -56,6 +62,7 @@ public final class InteractionModels {
     static ApiModels.PlaceView place(Place p) {
         return p == null ? null : new ApiModels.PlaceView(p.getId(), p.getName(), p.getLatitude(), p.getLongitude(), p.getCategory());
     }
+
     public static View view(Interaction item, Long accountId, Long humanId) {
         Map<String, Object> details = new LinkedHashMap<>();
         if (item instanceof Meeting meeting) details.put("placeString", meeting.getPlaceString());

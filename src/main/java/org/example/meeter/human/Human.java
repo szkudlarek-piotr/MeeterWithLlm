@@ -24,6 +24,9 @@ public class Human extends OwnedEntity {
  this.name=name; this.surname=surname; this.birthdayDate=birthdayDate; this.fbLink=fbLink; this.gender=gender; this.livesIn=livesIn; this.home=home; this.clique=clique;
  }
  public String getFullName() { return (name+" "+(surname==null?"":surname)).trim(); }
+ public void editProfile(String name,String surname,LocalDate birthdayDate,String fbLink,String gender,String livesIn) {
+  this.name=name; this.surname=surname; this.birthdayDate=birthdayDate; this.fbLink=fbLink; this.gender=gender; this.livesIn=livesIn;
+ }
  public void setProfilePhotoFile(String file) { this.profilePhotoFile=file; }
  public void markAsDemo() { demo=true; }
  public String getProfilePhotoUrl() {

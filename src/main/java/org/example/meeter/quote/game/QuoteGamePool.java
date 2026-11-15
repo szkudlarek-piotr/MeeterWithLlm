@@ -20,17 +20,37 @@ public class QuoteGamePool {
     private final CurrentAccount account;
     private final CliqueRepository cliques;
     private final HumanRepository people;
-    private final InteractionRepository interactions;
-    private final InteractionService interactionService;
+    private final QuoteGameVisits visits;
     private final QuoteRepository quotes;
     public QuoteGamePool(CurrentAccount account, CliqueRepository cliques, HumanRepository people,
-                         InteractionRepository interactions, InteractionService interactionService, QuoteRepository quotes) {
+                         QuoteGameVisits visits, QuoteRepository quotes) {
         this.account = account; this.cliques = cliques; this.people = people;
-        this.interactions = interactions; this.interactionService = interactionService; this.quotes = quotes;
+        this.visits = visits; this.quotes = quotes;
     }
     private <T> Specification<T> owned() {
         Long id = account.id();
         return (root, query, cb) -> cb.equal(root.get("createdBy").get("id"), id);
+    }
+    public Selection drawSingle() {
+        Specification<Human> withPublicQuote = (root, query, cb) -> {
+            var authors = query.subquery(Long.class);
+            var quote = authors.from(Quote.class);
+            authors.select(quote.get("id")).where(cb.equal(quote.get("author"), root), cb.isTrue(quote.get("isPublic")));
+            return cb.exists(authors);
+        };
+        long count = people.count(withPublicQuote);
+        if (count == 0) throw bad("Brak publicznych cytatów z autorem. Dodaj cytat przed rozpoczęciem gry.");
+        if (count > Integer.MAX_VALUE) throw bad("Zbyt duża pula autorów.");
+        var authorPage = people.findAll(withPublicQuote, PageRequest.of(ThreadLocalRandom.current().nextInt((int) count), 1, Sort.by("id")));
+        if (authorPage.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Pula cytatów zmieniła się. Spróbuj ponownie.");
+        Long authorId = authorPage.getContent().getFirst().getId();
+        Specification<Quote> publicByAuthor = (root, query, cb) -> cb.and(cb.isTrue(root.get("isPublic")), cb.equal(root.get("author").get("id"), authorId));
+        long quoteCount = quotes.count(publicByAuthor);
+        if (quoteCount == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "Pula cytatów zmieniła się. Spróbuj ponownie.");
+        if (quoteCount > Integer.MAX_VALUE) throw bad("Zbyt duża pula cytatów autora.");
+        var quotePage = quotes.findAll(publicByAuthor, PageRequest.of(ThreadLocalRandom.current().nextInt((int) quoteCount), 1, Sort.by("id")));
+        if (quotePage.isEmpty()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Pula cytatów zmieniła się. Spróbuj ponownie.");
+        return new Selection(null, List.of(), new LinkedHashSet<>(people.findAll(Sort.by("id"))), List.of(quotePage.getContent().getFirst()));
     }
     public Selection draw(Long visitId, Set<Long> cliqueIds) {
         Set<Long> ids = cliqueIds == null ? Set.of() : cliqueIds;
@@ -39,8 +59,7 @@ public class QuoteGamePool {
         List<Clique> selectedCliques = List.of();
         Set<Human> candidates;
         if (visitId != null) {
-            if (interactionService.get(visitId).type() != InteractionType.VISIT) throw missing();
-            visit = (Visit) interactions.findById(visitId).orElseThrow(QuoteGamePool::missing);
+            visit = visits.get(visitId);
             candidates = new LinkedHashSet<>(visit.getParticipants());
         } else {
             selectedCliques = cliques.findAll(this.<Clique>owned().and((root, q, cb) -> root.get("id").in(ids)));
