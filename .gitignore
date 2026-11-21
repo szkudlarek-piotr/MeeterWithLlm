@@ -11,3 +11,9 @@ backend/data/
 backend-starter.zip
 
 getPlaceCategories.js
+
+# Personal-data import scripts: run manually, never committed
+migrate_*.sql
+fix_wedding_names.sql
+import_news_*.sql
+inspect_trips.sql
