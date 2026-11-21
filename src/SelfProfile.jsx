@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { PhotoForm } from './PersonProfile.jsx'
 import PersonAvatar from './PersonAvatar.jsx'
+import MyQuotesPanel from './MyQuotesPanel.jsx'
 
 export default function SelfProfile({ onChange }) {
   const [person, setPerson] = useState(null)
@@ -46,5 +47,6 @@ export default function SelfProfile({ onChange }) {
       {notice && <p role="status">{notice}</p>}
       <PhotoForm person={person} endpoint="/people/self/photo" onSave={saved} />
     </>}
+    <MyQuotesPanel />
   </>
 }
