@@ -18,6 +18,11 @@ export default css`
 .clique-options p { color: var(--muted); font-size: 12px; padding: 6px; }
 .field-error { color: #bd5243; font-size: 12px; }
 .relation-note { color: var(--muted); font-size: 12px; line-height: 1.7; background: var(--soft); padding: 14px; border-radius: 10px; }
+.superpower-icons { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.superpower-icons li { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: #e9e4f2; font-size: 14px; cursor: default; }
+.superpower-icons img { width: 100%; height: 100%; object-fit: cover; margin: 0; display: block; }
+.superpower-list li .superpower-remove { opacity: 0; transition: opacity 0.15s ease; }
+.superpower-list li:hover .superpower-remove, .superpower-list li:focus-within .superpower-remove { opacity: 1; }
 .superpower-editor { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
 .superpower-editor h3 { margin: 0 0 12px; font-size: 15px; }
 .superpower-list { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 8px; }

@@ -4,6 +4,7 @@ import { PersonAvatar, ParticipantsEditor } from './CalendarPanel.jsx'
 import { interactionEntry } from './InteractionForm.jsx'
 import QuoteContent from './QuoteContent.jsx'
 import TripMap from './TripMap.jsx'
+import { t } from './i18n.js'
 
 const sections = [['profile', 'Profil'], ['map', 'Mapa interakcji'], ['VISIT', 'Wizyty'], ['MEETING', 'Spotkania'], ['EVENT', 'Eventy'], ['TRIP', 'Podróże'], ['quotes', 'Cytaty']]
 const date = value => new Date(`${value.slice(0, 10)}T12:00:00`).toLocaleDateString('pl-PL')
@@ -165,6 +166,13 @@ export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly,
           {person.clique.cliqueName}
         </dd></div>}
       </dl>
+      {superpowers.length > 0 && <ul className="superpower-icons" aria-label={t('people.superpowers')}>
+        {superpowers.map(item => <li key={item.superpowerId} title={item.superpowerName} aria-label={item.superpowerName}>
+          {item.photoUrl
+            ? <img src={item.photoUrl} alt="" width={36} height={36} loading="lazy" />
+            : <span aria-hidden="true">{item.superpowerName.charAt(0)}</span>}
+        </li>)}
+      </ul>}
       {/^(https?:\/\/)/i.test(person.fbLink || '') && <a href={person.fbLink} target="_blank" rel="noopener noreferrer">Profil na Facebooku ↗</a>}
       <section className="superpower-editor" aria-labelledby="person-superpowers-title">
         <h3 id="person-superpowers-title">Supermoce</h3>
@@ -172,7 +180,7 @@ export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly,
         {superpowers.length ? <ul className="superpower-list">
           {superpowers.map(item => <li key={item.superpowerId}>
             {item.photoUrl && <img src={item.photoUrl} alt="" width="40" height="40" loading="lazy" style={{ borderRadius: 6, objectFit: 'cover' }} />}<span>{item.superpowerName}</span>
-            {canEditSuperpowers && <button type="button" className="text-button" disabled={superpowerBusy} onClick={() => removeSuperpower(item.superpowerId)}>Usuń</button>}
+            {canEditSuperpowers && <button type="button" className="text-button superpower-remove" disabled={superpowerBusy} onClick={() => removeSuperpower(item.superpowerId)}>Usuń</button>}
           </li>)}
         </ul> : <p className="field-hint">Brak przypisanych supermocy.</p>}
         {canEditSuperpowers && <form className="superpower-add" onSubmit={addSuperpower}>
