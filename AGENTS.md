@@ -32,7 +32,7 @@ Before database work or backend startup, check the project-root PowerShell scrip
 
 Meeter is a local personal relationship and interaction tracker. The interface is in Polish and includes people, places, cliques (groups), an interaction feed, and a monthly calendar. Authentication connects an account to a person. Keep existing Polish UI text and date conventions unless the task asks for a language change.
 
-The frontend is React with JavaScript/JSX and Vite. The backend is Java 25, Spring Boot 4.1.1, Spring Security, Spring Data JPA, and file-backed H2. Dependency versions and scripts are defined in `package.json`, `package-lock.json`, and `backend/pom.xml`; check these files before changing the toolchain.
+The frontend is React with JavaScript/JSX and Vite. The backend is Java 21, Spring Boot 4.1.1, Spring Security, Spring Data JPA, and file-backed H2. Dependency versions and scripts are defined in `package.json`, `package-lock.json`, and `backend/pom.xml`; check these files before changing the toolchain.
 
 This is a development implementation with its own local database. Do not assume it connects to the original Meeter database or contains imported production data.
 
@@ -111,7 +111,7 @@ Backend, from `backend`:
 .\mvnw.cmd spring-boot:run
 ```
 
-The backend listens at `http://127.0.0.1:8091`. The Maven Wrapper obtains Maven and dependencies when necessary. Java 25 must be available.
+The backend listens at `http://127.0.0.1:8091`. The Maven Wrapper obtains Maven and dependencies when necessary. Java 21 must be available.
 
 If Java needs the Windows certificate store, use the documented trust configuration:
 
@@ -233,7 +233,7 @@ Render quote text through `src/QuoteContent.jsx` in the people directory and quo
 
 Roles are persisted enum values (`ROLE_USER`, `ROLE_ADMIN`) in the `user_roles` element collection. `CurrentAccount.Principal` and authentication DTOs include roles; token authentication and `UserDetailsService` use these stored authorities. New accounts default to `ROLE_USER`; `RoleBootstrap` backfills that role for existing accounts. With local `app.dev.bootstrap=true`, it also grants `pszkudlarek` both roles idempotently. This local admin bootstrap must remain disabled outside development. Roles are read from the database during token authentication, not supplied by clients; there is no public role-grant endpoint.
 
-The dashboard has no standalone Cytaty view. Keep the Dodaj cytat action and QuoteForm.jsx with EntityPicker and src/api.js. Saving opens and refreshes the people directory. Quotes appear in people cards and the guessing game, not as dated calendar events.
+The dashboard has a My quotes view (`view === 'my-quotes'`, left menu) for the account's own quotes; see the recent-changes section. Keep the Dodaj cytat action and QuoteForm.jsx with EntityPicker and src/api.js. Saving opens and refreshes the people directory. Quotes appear in people cards and the guessing game, not as dated calendar events.
 
 ## Quote guessing game
 
@@ -294,3 +294,20 @@ User-authorized exception: authenticated GET /api/quote-games/visits lists visit
 ## KTO ETA SKAZAŁ
 User-requested separate game, alongside the original visit/clique game. POST /api/quote-games/single accepts {secondsPerQuestion}, draws one uniformly random author with public quotes and one random public quote by that author, and persists exactly one round. All Human IDs are answer candidates (including imported/foreign-owned people); only IDs and names are exposed. No author identity is revealed before answering. Existing timer, public-retraction, ownership, CSRF, self-quote and guess rules apply. scopeType=SINGLE uses existing columns; no schema migration. GET /api/quote-games/single/history and /api/quote-games/single/leaderboard serve only SINGLE games. The original history and leaderboard exclude SINGLE games. The single=true query parameter remains supported for API compatibility. The UI offers separate menu entries and resets local state when switching games.
 
+## Recent changes (superpowers, My quotes, quote text)
+
+### Polski
+
+- Ikonki supermocy są tylko w oknie osoby (`src/PersonProfile.jsx`), pod szczegółami osoby, z nazwą po najechaniu. Widok Ludzie (`src/PeoplePanel.jsx`) ich nie pokazuje, a `/api/people/browse` nie zwraca supermocy. Przycisk „Usuń" przy supermocy (`.superpower-remove`) pojawia się po najechaniu na listę lub po fokusie klawiatury (`src/styles/personForms.js`).
+- Supermoce: zdjęcia importuje się z panelu administracyjnego (`POST /api/admin/superpowers/photos/import`, najpierw podgląd `dryRun`). Pliki nazywa się `{ID supermocy}.jpg|png|gif`; zapisywane są jako `backend/data/photos/superpowers/{uuid}.jpg`. Skrypty `migrate_*.sql` są lokalne (ignorowane przez Git) i uruchamia je człowiek ręcznie.
+- „Moje cytaty" to osobny widok w lewym menu (`src/Dashboard.jsx`, `view === 'my-quotes'`), a nie część okna „Moje dane". Pokazuje dwie kolumny: publiczne i prywatne. Cytat przeciąga się między kolumnami myszą albo klawiaturą (`@dnd-kit/core`). Nie ma przycisku zmiany widoczności, bo zastępuje go przeciąganie; zmiana idzie przez `PATCH /api/quotes/{id}/visibility`. Kolumny są widoczne także bez cytatów. Style: `src/styles/myQuotes.js`, kolory z motywu (`--card`, `--surface`, `--border`, `--accent`).
+- `QuoteContent` zachowuje znaki nowej linii w tekście cytatu (`.quote-content { white-space: pre-line }` w `src/styles/quotes.js`). Reguły usuwające `\n` obok `<br>` nadal działają.
+- Zależność `@dnd-kit/core` jest w `package.json`. Java w `backend/pom.xml` to 21, CI też używa 21.
+
+### English
+
+- Superpower icons appear only in the person dialog (`src/PersonProfile.jsx`), below the person's details, with the name on hover. The People view (`src/PeoplePanel.jsx`) does not show them, and `/api/people/browse` does not return superpowers. The remove button for a superpower (`.superpower-remove`) appears on hover over the list or when the list has keyboard focus (`src/styles/personForms.js`).
+- Superpower photos are imported from the admin panel (`POST /api/admin/superpowers/photos/import`, preview with `dryRun` first). Files are named `{superpower ID}.jpg|png|gif` and stored as `backend/data/photos/superpowers/{uuid}.jpg`. The `migrate_*.sql` scripts are local and Git-ignored; a person runs them by hand.
+- My quotes is its own view in the left menu (`src/Dashboard.jsx`, `view === 'my-quotes'`), not part of the My data dialog. It shows two columns, public and private. Drag a quote between columns with the mouse or keyboard (`@dnd-kit/core`). There is no visibility button because dragging replaces it; the change goes through `PATCH /api/quotes/{id}/visibility`. Columns stay visible when there are no quotes. Styles are in `src/styles/myQuotes.js`, colours come from theme variables (`--card`, `--surface`, `--border`, `--accent`).
+- `QuoteContent` keeps line breaks in quote text (`.quote-content { white-space: pre-line }` in `src/styles/quotes.js`). The rules that drop newlines next to `<br>` still apply.
+- `@dnd-kit/core` is a dependency in `package.json`. Java in `backend/pom.xml` is 21, and CI uses 21 too.
