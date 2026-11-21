@@ -38,7 +38,7 @@ public class UuidResponse implements ResponseBodyAdvice<Object> {
         Map.entry(CurrentAccount.Principal.class, Kind.USER), Map.entry(AdminUsers.Created.class, Kind.USER),
         Map.entry(NewsController.Item.class, Kind.NEWS), Map.entry(SuperpowerController.View.class, Kind.SUPERPOWER)
     );
-    private static final Pattern PHOTO = Pattern.compile("^/api/(people(?:/(?:browse|participants))?|events|cliques)/(\\d+)(/photo)(.*)$");
+    private static final Pattern PHOTO = Pattern.compile("^/api/(people(?:/(?:browse|participants))?|events|cliques|superpowers)/(\\d+)(/photo)(.*)$");
 
     @Override public boolean supports(MethodParameter type, Class<? extends HttpMessageConverter<?>> converter) { return true; }
     @Override public Object beforeBodyWrite(Object body, MethodParameter type, MediaType mediaType,
@@ -89,7 +89,8 @@ public class UuidResponse implements ResponseBodyAdvice<Object> {
             var photo = PHOTO.matcher(url);
             if (photo.matches()) {
                 Kind photoKind = photo.group(1).startsWith("people") ? Kind.HUMAN
-                    : photo.group(1).equals("events") ? Kind.INTERACTION : Kind.CLIQUE;
+                    : photo.group(1).equals("events") ? Kind.INTERACTION
+                    : photo.group(1).equals("superpowers") ? Kind.SUPERPOWER : Kind.CLIQUE;
                 Object uuid = ids.apply(photoKind, Long.valueOf(photo.group(2)));
                 return "/api/v2/" + photo.group(1) + "/" + uuid + photo.group(3) + photo.group(4);
             }
