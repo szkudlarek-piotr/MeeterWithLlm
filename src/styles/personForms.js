@@ -18,5 +18,11 @@ export default css`
 .clique-options p { color: var(--muted); font-size: 12px; padding: 6px; }
 .field-error { color: #bd5243; font-size: 12px; }
 .relation-note { color: var(--muted); font-size: 12px; line-height: 1.7; background: var(--soft); padding: 14px; border-radius: 10px; }
+.superpower-editor { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+.superpower-editor h3 { margin: 0 0 12px; font-size: 15px; }
+.superpower-list { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 8px; }
+.superpower-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--soft); border-radius: 10px; font-size: 13px; }
+.superpower-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+.superpower-add label { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
 @media (max-width: 480px) { .form-grid { grid-template-columns: minmax(0, 1fr); } }
 `

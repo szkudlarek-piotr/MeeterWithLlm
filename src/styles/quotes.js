@@ -1,6 +1,12 @@
 import { css } from 'styled-components'
 
 export default css`
+.person-clique-icon { object-fit: contain; vertical-align: middle; margin-inline-end: 8px; border-radius: 6px; }
+.person-browser-card { text-align: center; }
+.person-browser-card .person { flex-direction: column; }
+.person-browser-card .person-open { text-align: center; }
+.person-card-clique { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.person-card-clique .person-clique-icon { object-fit: cover; margin: 0; border-radius: 50%; }
 .person-public-quote { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 16px; }
 .person-public-quote, .quote-content { text-align: center; }
 .quote-vote { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 12px 0 4px; }

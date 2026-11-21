@@ -82,9 +82,10 @@ export default function CalendarPanel({ month, entries, selectedDate, onSelect, 
   const selected = selectedDate ? entries.filter(entry => occurs(entry, selectedDate)) : []
   const today = keyOf(new Date())
   const monthCount = entries.length
+  const chronologicalEntries = entries.toSorted((a, b) => a.startDate.localeCompare(b.startDate))
   const perDay = Array.from({ length: numberOfDays }, (_, index) => {
     const date = keyOf(new Date(month.getFullYear(), month.getMonth(), index + 1))
-    return { date, items: entries.filter(entry => occurs(entry, date)) }
+    return { date, items: chronologicalEntries.filter(entry => occurs(entry, date)) }
   })
 
   return <section className="memory-calendar">
@@ -100,10 +101,14 @@ export default function CalendarPanel({ month, entries, selectedDate, onSelect, 
         {perDay.map(({ date, items }, index) => {
           const people = peopleOf(items, actorId)
           const kinds = [...new Set(items.map(item => item.type))]
+          const names = items.map(item => item.name)
+          const preview = names.length > 1 ? names.slice(0, -1).join(', ') + ' oraz ' + names.at(-1) : names[0]
           return <button key={date} className={`memory-day ${items.length ? 'filled' : ''} ${selectedDate === date ? 'selected' : ''} ${date === today ? 'today' : ''}`} aria-label={`${fullDate(date)}, ${items.length} interakcji`} aria-haspopup="dialog" aria-pressed={selectedDate === date} onClick={() => selectDay(date)}>
             <span className="memory-day-number">{index + 1}{items.length > 0 && <small>{items.length}</small>}</span>
             {people.length > 0 && <span className="calendar-people">{people.slice(0, 3).map(person => <PersonAvatar key={person.id} person={person} />)}{people.length > 3 && <span className="more-people">+{people.length - 3}</span>}</span>}
-            {items.length > 0 && <span className="day-preview">{items[0].name}</span>}
+            {items.length > 0 && <span className={names.length > 1 ? 'day-preview day-preview-list' : 'day-preview'} title={preview}>
+              {preview}
+            </span>}
             <span className="day-types">{kinds.map(type => <span key={type} className={`type-mark type-${type.toLowerCase()}`} title={types[type][0]} aria-label={types[type][0]}>{types[type][1]}</span>)}</span>
           </button>
         })}

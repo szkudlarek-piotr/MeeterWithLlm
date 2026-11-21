@@ -27,6 +27,7 @@ export default css`
 .calendar-people .calendar-avatar + .calendar-avatar { margin-left: -9px; }
 .more-people { font-size: 9px; color: var(--muted); padding-left: 4px; }
 .day-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; margin-bottom: 8px; }
+.day-preview-list { white-space: normal; overflow-wrap: anywhere; }
 .day-types { display: flex; gap: 3px; margin-top: auto; }
 .type-mark { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; font-size: 11px; font-style: normal; }
 .type-meeting { background: #dce9d4; color: #41663a; }

@@ -34,6 +34,22 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .public-quotes-toggle[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
 .app-shell .actions { flex-wrap: wrap; justify-content: flex-end; }
 .welcome .actions { flex-wrap: wrap; justify-content: flex-end; }
+.topbar .actions {
+  gap: 8px;
+}
+.topbar .actions > button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.topbar .actions > .primary {
+  padding-inline: 20px;
+}
 .primary { display: inline-flex; justify-content: center; align-items: center; gap: 20px; border: 0; border-radius: 30px; padding: 13px 22px; background: var(--accent); color: var(--surface); font-size: 13px; font-weight: 700; }
 .primary:hover { filter: brightness(1.12); }
 .login-dialog { position: fixed; width: min(440px, calc(100% - 32px)); padding: 38px; border: 1px solid var(--border); border-radius: 24px; color: var(--ink); background: var(--surface); box-shadow: 0 24px 100px #0003; }
@@ -49,7 +65,9 @@ input { min-width: 0; width: 100%; border: 1px solid var(--border); border-radiu
 .submit { width: 100%; }
 @media (max-width: 600px) {
   .welcome { padding-top: 24px; }
-  .actions { gap: 4px; }
+  .topbar .actions { gap: 4px; }
+  .topbar .actions > button { padding-inline: 8px; }
+  .topbar .actions > .primary { padding-inline: 12px; }
   .theme-toggle > span:last-child { display: none; }
   .primary { padding: 12px 16px; gap: 8px; }
   .login-dialog { padding: 30px 24px; }
