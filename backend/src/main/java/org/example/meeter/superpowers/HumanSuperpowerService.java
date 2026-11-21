@@ -47,7 +47,8 @@ public class HumanSuperpowerService {
     }
 
     public List<View> list(Long humanId) {
-        managedHuman(humanId);
+        // Reading is open to every signed-in user; only add and remove need managedHuman.
+        if (!people.existsById(humanId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Nie znaleziono osoby.");
         return links.findByHumanIdOrderById(humanId).stream().map(View::of).toList();
     }
 
