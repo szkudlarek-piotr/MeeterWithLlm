@@ -79,6 +79,23 @@ public class QuoteService {
     }
 
     public record AuthorPage(java.util.List<RankedView> content, int page, int size, long totalElements, boolean hasNext) {}
+    /** Every quote in which the signed-in person is the author, whoever created it. */
+    public AuthorPage mine(int page, int size) {
+        Long self = account.principal().humanId();
+        if (self == null) return new AuthorPage(java.util.List.of(), page, size, 0, false);
+        return forAuthor(self, page, size, false);
+    }
+
+    /** Only the quote's author (or an administrator) can change whether it is public. */
+    @Transactional public View setVisibility(Long id, boolean value) {
+        Quote quote = quotes.lockById(id).orElseThrow(QuoteService::missing);
+        Long self = account.principal().humanId();
+        boolean isAuthor = self != null && quote.getAuthor() != null && self.equals(quote.getAuthor().getId());
+        if (!isAuthor && !account.isAdmin()) throw missing();
+        quote.changeVisibility(value);
+        return view(quote);
+    }
+
     public AuthorPage forAuthor(Long authorId, int page, int size, boolean publicOnly) {
         boolean seePrivate = !publicOnly && (account.isAdmin() || authorId.equals(account.principal().humanId()));
         var result = quotes.rankedByAuthor(authorId, seePrivate, account.id(), PageRequest.of(page, size));
