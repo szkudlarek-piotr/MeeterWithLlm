@@ -17,6 +17,7 @@ export default css`
 .person-detail-dialog:has(.quote-vote) { overflow-anchor: none; }
 .quote-vote span { min-width: 3ch; font-variant-numeric: tabular-nums; }
 .quote-content { hyphens: auto; -webkit-hyphens: auto; word-break: normal; overflow-wrap: break-word; }
+.quote-content { white-space: pre-line; }
 .quote-content pre { white-space: pre-wrap; }
 .quote-content > :first-child { margin-top: 0; }
 .quote-content > :last-child { margin-bottom: 0; }
