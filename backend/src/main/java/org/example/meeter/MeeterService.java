@@ -19,8 +19,9 @@ public class MeeterService {
  private final PeopleRanking ranking;
  private final PersonSuggestions suggestions;
  private final org.example.meeter.interactions.InteractionRepository interactions;
+ private final org.example.meeter.superpowers.SuperpowerAccess superpowerAccess;
 
- public MeeterService(PlaceRepository p,CliqueRepository c,HumanRepository h,CurrentAccount account,UserRepository users,PhotoStorage photos,PeopleRanking ranking,PersonSuggestions suggestions,org.example.meeter.interactions.InteractionRepository interactions) {
+ public MeeterService(PlaceRepository p,CliqueRepository c,HumanRepository h,CurrentAccount account,UserRepository users,PhotoStorage photos,PeopleRanking ranking,PersonSuggestions suggestions,org.example.meeter.interactions.InteractionRepository interactions,org.example.meeter.superpowers.SuperpowerAccess superpowerAccess) {
   places=p;
   cliques=c;
   people=h;
@@ -30,6 +31,7 @@ public class MeeterService {
   this.ranking=ranking;
   this.suggestions=suggestions;
   this.interactions=interactions;
+  this.superpowerAccess=superpowerAccess;
  }
 
  private <T> Specification<T> owned() {
@@ -92,6 +94,10 @@ public class MeeterService {
   return human.getId().equals(account.principal().humanId()) || account.isAdmin() || human.getCreatedBy()!=null && human.getCreatedBy().getId().equals(account.id());
  }
 
+ public boolean canEditSuperpowers(Human human) {
+  return superpowerAccess.canManage(human);
+ }
+
  public PersonProfileView profile(Long id) {
   Human human=browseHuman(id);
   // Build the complete DTO while lazy home/clique/capital relations are available.
@@ -99,7 +105,7 @@ public class MeeterService {
   var lastSeen=interactions.lastSharedInteraction(id,account.principal().humanId(),now,PageRequest.of(0,1)).stream()
    .map(item->new LastSeenView(java.time.temporal.ChronoUnit.DAYS.between(item.getSeenAt().toLocalDate(),now.toLocalDate()),item.getName()))
    .findFirst().orElse(null);
-  return new PersonProfileView(HumanView.forBrowse(human),canEditPhoto(human),lastSeen);
+  return new PersonProfileView(HumanView.forBrowse(human),canEditPhoto(human),canEditSuperpowers(human),lastSeen,CliqueIcon.forViewer(human.getClique(),account.id()));
  }
 
  private Human photoHuman(Long id) {

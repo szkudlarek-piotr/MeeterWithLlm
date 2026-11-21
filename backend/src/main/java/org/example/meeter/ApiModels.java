@@ -10,8 +10,16 @@ public final class ApiModels {
   @Size(max=2048) @Pattern(regexp="(?i)^https?://[^\\s]+$",message="Podaj adres HTTP lub HTTPS.") String fbLink,
   @Size(max=1) String gender,@Size(max=200) String livesIn) {}
  public record LastSeenView(long daysAgo,String interactionName) {}
- public record PersonProfileView(HumanView person,boolean canEditPhoto,LastSeenView lastSeen) {}
- public record PersonBrowseView(HumanView person,long visitCount,PublicQuoteView publicQuote) {}
+ public record PersonProfileView(HumanView person,boolean canEditPhoto,boolean canEditSuperpowers,LastSeenView lastSeen,CliqueIcon cliqueIcon) {}
+ public record CliqueIcon(String photoUrl) {
+  static CliqueIcon forViewer(Clique clique,Long viewerId) {
+   if (clique==null || clique.getCreatedBy()==null || !viewerId.equals(clique.getCreatedBy().getId())) return null;
+   var photo=clique.getPhoto();
+   if (photo==null || photo.getPhotoType()!=org.example.meeter.multimedia.photo.PhotoType.CLIQUE) return null;
+   return new CliqueIcon("/api/cliques/"+clique.getId()+"/photo?v="+photo.getUuid());
+  }
+ }
+ public record PersonBrowseView(HumanView person,long visitCount,PublicQuoteView publicQuote,CliqueIcon cliqueIcon) {}
  public record PeoplePage(java.util.List<PersonBrowseView> content,int page,int size,long totalElements,boolean hasNext) {}
  public record PlaceInput(@NotBlank @Size(max=200) String name,
   @NotNull @DecimalMin("-90") @DecimalMax("90") Double latitude,
