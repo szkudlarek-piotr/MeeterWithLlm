@@ -122,11 +122,28 @@ public class PeopleRanking {
                     publicQuotes.put(rs.getLong("author_id"),new ApiModels.PublicQuoteView(rs.getLong("id"),rs.getString("quote_text")));
                 });
         }
+        var superpowersByPerson=new HashMap<Long,List<ApiModels.SuperpowerIcon>>();
+        if(!rows.isEmpty()) {
+            jdbc.query("""
+                select hs.human_id, s.id as superpower_id, s.superpower_name, p.uuid as photo_uuid
+                from human_superpower hs
+                join superpowers s on s.id = hs.superpower_id
+                left join photos p on p.id = s.superpower_photo_id
+                where hs.human_id in (:ids)
+                order by s.superpower_name, s.id
+                """,Map.of("ids",rows.stream().map(Row::id).toList()),rs->{
+                    String photoUuid=rs.getString("photo_uuid");
+                    String photoUrl=photoUuid==null ? null : "/api/superpowers/"+rs.getLong("superpower_id")+"/photo?v="+photoUuid;
+                    superpowersByPerson.computeIfAbsent(rs.getLong("human_id"),k->new ArrayList<>())
+                        .add(new ApiModels.SuperpowerIcon(rs.getString("superpower_name"),photoUrl));
+                });
+        }
         Long viewerId=account.id();
         var content=rows.stream().map(row->{
             var human=byId.get(row.id());
             return new ApiModels.PersonBrowseView(ApiModels.HumanView.forBrowse(human),row.visits(),
-                publicQuotes.get(row.id()),ApiModels.CliqueIcon.forViewer(human.getClique(),viewerId));
+                publicQuotes.get(row.id()),ApiModels.CliqueIcon.forViewer(human.getClique(),viewerId),
+                superpowersByPerson.getOrDefault(row.id(),List.of()));
         }).toList();
         return new ApiModels.PeoplePage(content,page,size,total,(long)page*size+size<total);
     }

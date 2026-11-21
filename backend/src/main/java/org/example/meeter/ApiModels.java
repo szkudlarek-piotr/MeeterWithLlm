@@ -19,7 +19,9 @@ public final class ApiModels {
    return new CliqueIcon("/api/cliques/"+clique.getId()+"/photo?v="+photo.getUuid());
   }
  }
- public record PersonBrowseView(HumanView person,long visitCount,PublicQuoteView publicQuote,CliqueIcon cliqueIcon) {}
+ public record PersonBrowseView(HumanView person,long visitCount,PublicQuoteView publicQuote,CliqueIcon cliqueIcon,java.util.List<SuperpowerIcon> superpowers) {}
+ /** Name and optional photo of one superpower assigned to a person; no internal ids are exposed. */
+ public record SuperpowerIcon(String name,String photoUrl) {}
  public record PeoplePage(java.util.List<PersonBrowseView> content,int page,int size,long totalElements,boolean hasNext) {}
  public record PlaceInput(@NotBlank @Size(max=200) String name,
   @NotNull @DecimalMin("-90") @DecimalMax("90") Double latitude,
