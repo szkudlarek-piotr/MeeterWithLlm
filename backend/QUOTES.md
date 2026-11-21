@@ -1,45 +1,46 @@
-# Cytaty
+# Quotes
 
-Moduł `org.example.meeter.quote` zawiera `Quote`, `QuoteRepository`, `QuoteService`, `QuoteController` i kontrakty `QuoteModels`. Autor nowego cytatu to wymagana osoba `Human`; właściciel to zalogowane konto `User`, przypisywane przez serwer. Cytaty nie są interakcjami i nie trafiają do kalendarza.
+The `org.example.meeter.quote` module contains `Quote`, `QuoteRepository`, `QuoteService`, `QuoteController` and the `QuoteModels` contracts. The author of a new quote is a required `Human` person; the owner is the signed-in `User` account, assigned by the server. Quotes are not interactions and do not appear in the calendar.
 
 ## API
 
-Podpowiedzi `GET /api/quotes/authors` są sortowane malejąco po liczbie cytatów widocznych dla bieżącego konta (publiczne, prywatne własnego autora według Human ID, wszystkie dla administratora). Prywatne cudze cytaty nie wpływają na kolejność zwykłego konta; cytaty bez autora nie podnoszą żadnego wyniku. Remisy rozstrzygają nazwisko, imię i ID. Wyszukiwanie, wykluczenie my_exes i sortowanie odbywają się przed LIMIT. Osoby bez cytatów nadal można wybrać. Liczby nie są zwracane w podpowiedziach.
+Suggestions from `GET /api/quotes/authors` are sorted in descending order by the number of quotes visible to the current account (public quotes, private quotes of the author matched by Human ID, and all quotes for an administrator). Private quotes by others do not affect the order for an ordinary account; quotes without an author do not raise any result. Ties are broken by surname, first name and ID. Searching, excluding `my_exes` and sorting all happen before LIMIT. People without quotes can still be selected. Counts are not returned in the suggestions.
 
-- `POST /api/quotes`: utworzenie cytatu, odpowiedź 201.
-- `GET /api/quotes/{id}`: dostępny cytat lub 404 dla nieistniejącego/niedostępnego ID.
-Osobny endpoint kolekcji `GET /api/quotes` został usunięty. Cytaty są prezentowane w kafelkach ludzi i grze.
+- `POST /api/quotes`: creates a quote; response 201.
+- `GET /api/quotes/{id}`: an available quote, or 404 for a non-existent or inaccessible ID.
 
-Przykład utworzenia:
+The separate collection endpoint `GET /api/quotes` has been removed. Quotes are presented on people's cards and in the game.
+
+Example of creation:
 
 ```json
 {
-  "quote": "Słowa warte zapamiętania.",
+  "quote": "Words worth remembering.",
   "authorId": 77,
   "isPublic": false
 }
 ```
 
-Treść po usunięciu skrajnych białych znaków ma mieć 4–10240 znaków. Zachowano minimum 4 z adnotacji przekazanej encji i poprawiono sprzeczny komunikat. `authorId` jest wymagane (brak/null: 400). Autor może pochodzić z dowolnego konta lub importu; nieistniejący i my_exes zwracają 404. GET /api/quotes/authors?q=...&limit=100 wyszukuje autorów niezależnie od właściciela, również osobę powiązaną z kontem. Zwraca tylko ID, nazwę i pusty URL zdjęcia. `isPublic` można pominąć, domyślnie false.
+After trimming the outer whitespace, the content must be 4–10240 characters long. The minimum of 4 from the annotation on the entity is kept, and a contradictory message was corrected. `authorId` is required (missing or null: 400). The author can come from any account or import; a non-existent person or `my_exes` returns 404. `GET /api/quotes/authors?q=...&limit=100` searches authors regardless of owner, including the person linked to the account. It returns only the ID, the name and an empty photo URL. `isPublic` can be omitted and defaults to false.
 
-Odpowiedź cytatu zawiera `id`, `uuid`, `quote`, opcjonalne podsumowanie `author` (`id`, `fullName`, `profilePhotoUrl`), `isPublic` i serwerowy `addTime`. Dane konta, hasła ani tokeny nie są serializowane.
+The quote response contains `id`, `uuid`, `quote`, an optional `author` summary (`id`, `fullName`, `profilePhotoUrl`), `isPublic` and the server-side `addTime`. Account data, passwords and tokens are never serialised.
 
-Wszystkie endpointy wymagają sesji. POST wymaga również CSRF. Publiczny cytat (`isPublic=true`) widzi każdy zalogowany użytkownik. Prywatny widzi konto powiązane z osobą będącą autorem oraz `ROLE_ADMIN`. Administrator może odczytać dowolny cytat przez endpoint pojedynczego rekordu. Prywatny cytat bez autora widzi zapisujące konto i administrator. Zapisanie prywatnego cytatu innej osoby samo w sobie nie daje zapisującemu prawa do późniejszego odczytu. Dane autora ograniczono do podsumowania; URL profilówki jest pomijany dla osoby nienależącej do konta oglądającego.
+All endpoints require a session. POST also requires CSRF. A public quote (`isPublic=true`) is visible to every signed-in user. A private quote is visible to the account linked to the author's person and to `ROLE_ADMIN`. An administrator can read any quote through the single-record endpoint. A private quote without an author is visible to the saving account and to the administrator. Saving someone else's private quote does not by itself give the saver the right to read it later. Author data is limited to a summary; the profile picture URL is omitted for a person who does not belong to the viewing account.
 
-Role `ROLE_USER` i `ROLE_ADMIN` są przechowywane w `user_roles`. Role trafiają do DTO logowania i `/api/auth/me`, a tokenowy filtr uwierzytelniania używa ich jako authorities. `RoleBootstrap` uzupełnia `ROLE_USER` istniejącym kontom; przy lokalnym `app.dev.bootstrap=true` przypisuje kontu `pszkudlarek` także `ROLE_ADMIN`. Poza developmentem lokalny bootstrap należy wyłączyć. Nie ma publicznego endpointu nadawania ról.
+The roles `ROLE_USER` and `ROLE_ADMIN` are stored in `user_roles`. Roles are included in the sign-in DTO and in `/api/auth/me`, and the token authentication filter uses them as authorities. `RoleBootstrap` fills in `ROLE_USER` for existing accounts; with local `app.dev.bootstrap=true` it also gives the `pszkudlarek` account `ROLE_ADMIN`. Outside development, the local bootstrap must be disabled. There is no public endpoint for granting roles.
 
-`PUT /api/quotes/{id}/vote` przyjmuje `{vote: PLUS | MINUS}`, wymaga sesji i CSRF, a przyjmuje głosy tylko na cytaty widoczne dla danego konta. Konto może mieć jeden aktywny głos. Ponowienie tej samej oceny zwraca 204, a próba oddania przeciwnego głosu przed cofnięciem zwraca 409. DELETE /api/quotes/{id}/vote cofa własny głos i zwraca 204 także przy ponowieniu. Obowiązują te same zasady sesji, CSRF i widoczności. Migracja V5 zakłada tabelę głosów z unikalną parą cytat–konto.
+`PUT /api/quotes/{id}/vote` accepts `{vote: PLUS | MINUS}`, requires a session and CSRF, and accepts votes only for quotes visible to that account. An account can have one active vote. Repeating the same rating returns 204, and trying to cast the opposite vote before withdrawing returns 409. `DELETE /api/quotes/{id}/vote` withdraws your own vote and returns 204, including when repeated. The same session, CSRF and visibility rules apply. Migration V5 creates the vote table with a unique quote–account pair.
 
-## Interfejs i dane
+## Interface and data
 
-Przełącznik „Tylko publiczne cytaty” obok motywu i w zakładce Cytaty zapisuje preferencję w cookie `meeter-public-quotes`. Gdy jest włączony, backend filtruje listę autora przed paginacją oraz zwraca 404 przy odczycie, ocenie i cofnięciu oceny prywatnego cytatu, również administratorowi i autorowi. Wyłączenie przywraca widoczność wynikającą z uprawnień konta.
+The "Only public quotes" switch next to the theme switch in the top bar saves the preference in the `meeter-public-quotes` cookie. When it is on, the backend filters the author's list before pagination, and returns 404 when reading, rating or withdrawing a rating for a private quote, including for the administrator and the author. Turning it off restores the visibility given by the account's permissions.
 
-Modal osoby ma zakładkę Cytaty: `GET /api/people/browse/{id}/quotes?page=0&size=20` (rozmiar 1–100). Zwraca standardowe pola strony i cytaty danego autora, sortowane przed paginacją malejąco według wyniku (plusy minus minusy), następnie według `addTime` i ID. Każdy wpis zawiera `score` i `myVote` (1, -1 lub null). Stosuje ten sam filtr widoczności co pojedynczy cytat: zalogowani widzą publiczne, konto powiązane z autorem oraz admin również prywatne. Liczność i paginacja obejmują wyłącznie widoczne cytaty. Nie przywraca globalnego endpointu kolekcji `/api/quotes`. Renderer pozostaje QuoteContent.
+The person dialog has a Quotes tab: `GET /api/people/browse/{id}/quotes?page=0&size=20` (size 1–100). It returns the standard page fields and the author's quotes, sorted before pagination in descending order by score (plus votes minus minus votes), then by `addTime` and ID. Each entry contains `score` and `myVote` (1, -1 or null). It applies the same visibility filter as the single quote: signed-in users see public quotes, the account linked to the author sees their private quotes, and the administrator also sees private quotes. The count and pagination cover only visible quotes. The global `/api/quotes` collection endpoint is not restored. The renderer stays `QuoteContent`.
 
-`src/QuoteContent.jsx` jest wspólnym rendererem cytatów dla listy ludzi i gry (pytanie oraz odpowiedź). Cytaty są wyśrodkowane. HTML jest parsowany w nieaktywnym elemencie template i przebudowywany jako elementy React z ograniczonej listy tagów formatujących: pogrubienie, kursywa, podkreślenie, przekreślenie, akapity, podziały wierszy, listy, indeksy, kod. Wszystkie atrybuty są odrzucane, w tym style i obsługa zdarzeń; skrypty, iframe, SVG i podobne aktywne treści są pomijane. Obrazy i odnośniki nie są osadzane; tekst odnośnika pozostaje. Nie wstawiaj surowego HTML przez dangerouslySetInnerHTML. Zwykły tekst i łamania wierszy pozostają obsługiwane. Dane źródłowe cytatu w bazie nie są zmieniane.
+`src/QuoteContent.jsx` is the shared quote renderer for the people list and the game (the question and the answer). Quotes are centred. The HTML is parsed in an inert template element and rebuilt as React elements from a restricted list of formatting tags: bold, italic, underline, strikethrough, paragraphs, line breaks, lists, subscript, superscript and code. All attributes are rejected, including styles and event handlers; scripts, iframes, SVG and similar active content are skipped. Images and links are not embedded; the link text stays. Never insert raw HTML with `dangerouslySetInnerHTML`. Plain text and line breaks are supported. The source quote data in the database is not changed.
 
-Zakładka Ludzie dołącza do każdej osoby co najwyżej jeden losowy **publiczny** cytat tej osoby jako `publicQuote: {id, quote}` (albo null) w `GET /api/people/browse`. Losowanie odbywa się przy każdym odczycie strony. Zapytanie ogranicza pulę do autorów na bieżącej stronie i `is_public=true` przed losowaniem; nie ma wyjątku dla administratora ani własnych prywatnych cytatów. Cytaty bez autora są pomijane. Cytat nie wpływa na ranking, liczność ani paginację ludzi. Widok nie wysyła osobnego żądania dla każdej osoby. Długie cytaty mają przewijane pole z zachowaniem łamań wierszy.
+The People tab attaches at most one random **public** quote of each person as `publicQuote: {id, quote}` (or null) in `GET /api/people/browse`. The draw happens on every read of the page. The query limits the pool to the authors on the current page with `is_public=true` before drawing; there is no exception for administrators or for one's own private quotes. Quotes without an author are skipped. A quote does not affect the ranking, the counts or the pagination of people. The view sends no separate request for each person. Long quotes have a scrollable field that preserves line breaks.
 
-Menu zachowuje akcję „Dodaj cytat”, ale nie ma osobnego widoku kolekcji. Formularz zawiera treść, licznik znaków, wyszukiwarkę wymaganego autora, opcję „Cytat publiczny” oraz stany zapisu i błędu. Po zapisie otwiera listę ludzi i odświeża jej publiczne cytaty. Dane cytatów pozostają w bazie i są używane przez kafelki ludzi oraz grę.
+The menu keeps the "Add quote" action, but there is no separate collection view. The form contains the text, a character counter, a search for the required author, the "Public quote" option, and the saving and error states. After saving, it opens the people list and refreshes its public quotes. Quote data stays in the database and is used by the people cards and the game.
 
-Tabela `quotes` powstaje przez aktualną konfigurację developerską Hibernate. Tekst ma kolumnę o długości 10240, a nie domyślne 255. Autor i właściciel nie są usuwani kaskadowo wraz z cytatem. Przy rozbudowie o usuwanie osób/kont uwzględnij klucze obce z cytatów.
+The `quotes` table is created by the current development Hibernate configuration. The text column has a length of 10240, not the default 255. The author and the owner are not deleted in cascade together with the quote. When removal of people or accounts is added, take the foreign keys from quotes into account.

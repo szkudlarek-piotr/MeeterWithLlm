@@ -1,55 +1,56 @@
-# Gra „Zgadnij autora”
+# "Guess the author" game
 
-Każdy zalogowany użytkownik uruchamia własną rozgrywkę. Wybiera jedną wizytę utworzoną przez siebie lub taką, w której uczestniczy jako osoba powiązana z kontem, albo zestaw własnych klik (do 10). Wizyta daje pulę autorów ze wszystkich jej uczestników, także osoby dodawanej automatycznie; kliki dają sumę ich członków. Kliki pozostają prywatnym sposobem porządkowania kontaktów. Nie zmieniono ich modelu ani zasad dostępu.
+Each signed-in user starts their own game. They choose one visit created by them, or one in which they take part as the person linked to their account, or a set of their own cliques (up to 10). A visit gives the pool of authors from all its participants, including people added automatically; cliques give the union of their members. Cliques remain a private way of organising contacts. Their model and access rules have not changed.
 
-## Losowanie
+## Drawing
 
-`QuoteGamePool` dla każdej osoby z wybranego zakresu pobiera **wyłącznie publiczne** cytaty z autorem. Losuje bez powtórzeń do dwóch cytatów danej osoby, następnie tasuje całą połączoną listę. Autor z jednym cytatem wnosi jeden, a autor bez publicznych cytatów — zero. Nie ma dodatkowego limitu całkowitej liczby pytań. Rola administratora nie dopuszcza prywatnych cytatów do gry. Cytaty bez autora nie trafiają do losowania.
+For each person in the chosen scope, `QuoteGamePool` takes **public quotes only** that have an author. It draws up to two different quotes per person, then shuffles the combined list. An author with one quote contributes one, and an author with no public quotes contributes zero. There is no extra limit on the total number of questions. The administrator role does not let private quotes into the game. Quotes without an author are not drawn.
 
-Wynik losowania, kolejność, uczestnicy i kopie treści oraz autorów są zapisane w bazie. Odczyt, odświeżenie strony i wznowienie nie losują ponownie. Pusta pula zwraca 400 z informacją o potrzebie dodania publicznych cytatów. Jeśli cytat przestanie być publiczny, odczyt gry i dalsze odpowiedzi są blokowane, aby nie ujawniać jego zapisanej treści.
+The result of the draw, the order, the participants, and the copies of the text and authors are stored in the database. Reading, refreshing the page and resuming never draw again. An empty pool returns 400 with a message that public quotes must be added first. If a quote stops being public, reading the game and further answers are blocked, so that its stored text is not revealed.
 
-## Czas i odpowiedzi
+## Time and answers
 
-Limit wynosi domyślnie 30 sekund na pytanie, konfigurowalnie 10–120 sekund. Pierwszy cytat startuje przy utworzeniu gry. Kolejne pytanie uruchamia osobny POST `next`, po przeczytaniu wyniku poprzedniej odpowiedzi. Serwer zapisuje `started_at` i `deadline_at`; powtórzenie `next` dla aktywnego pytania nie zeruje czasu. DTO zawiera zegar serwera do synchronizacji odliczania.
+The limit is 30 seconds per question by default, configurable from 10 to 120 seconds. The first quote starts when the game is created. The next question is started by a separate `next` POST, after the result of the previous answer has been read. The server saves `started_at` and `deadline_at`; repeating `next` for an active question does not reset the timer. The DTO includes the server clock so that the countdown can be synchronised.
 
-Przekroczenie terminu daje nietrafioną odpowiedź, także jeśli klient przyśle poprawnego autora po czasie. Brak odpowiedzi po terminie jest zapisywany jako timeout z pustym typem. Wznowienie przeterminowanego pytania zapisuje timeout; nie przyznaje nowego czasu. Samo opuszczenie ekranu aktywnego pytania nie zatrzymuje zegara.
+Exceeding the deadline gives an incorrect answer, even if the client sends the correct author after the time has run out. An answer missing after the deadline is saved as a timeout with an empty type. Resuming an expired question saves a timeout; it does not grant new time. Leaving the screen of an active question does not stop the clock.
 
-`quote_guesses` przechowuje ID, rundę, wytypowaną osobę (opcjonalną dla timeoutu), poprawność, timeout, informację o własnym cytacie, czas odpowiedzi, datę zapisu i konto gracza. Jedna runda ma najwyżej jedną odpowiedź. Serwer sprawdza bieżącą rundę, przynależność typu do kandydatów i blokuje nadpisanie odpowiedzi. Blokada pesymistyczna rozgrywki i unikalność rundy w tabeli typów chronią przed równoczesnymi zapisami.
+`quote_guesses` stores the ID, the round, the guessed person (optional for a timeout), correctness, the timeout flag, whether the quote is the player's own, the answer time, the save date and the player's account. Each round has at most one answer. The server checks the current round, that the chosen type is among the candidates, and blocks overwriting an answer. A pessimistic lock on the game and the uniqueness of the round in the table protect against concurrent writes.
 
-Pytanie nie zawiera ID cytatu ani autora. Poprawny autor jest ujawniany dopiero w wyniku zapisanej odpowiedzi. Ogólne API cytatów pozostaje dostępne zgodnie ze swoimi regułami; gra jest zabawą towarzyską, nie systemem egzaminacyjnym odpornym na podgląd całej publicznej kolekcji.
+The question does not contain the quote ID or the author. The correct author is revealed only in the result of the saved answer. The general quote API remains available under its own rules; the game is a social pastime, not an exam system that is safe against viewing the whole public collection.
 
 ## Ranking
 
-Wynik to `100 × trafione nieswoje cytaty / wszystkie nieswoje cytaty w rozgrywce`. Własność oznacza tu **autorstwo osoby powiązanej z kontem gracza**, a nie konto, które wprowadziło cytat. Własne cytaty nie zwiększają licznika ani mianownika; timeouty i błędne typy przy nieswoich cytatach obniżają wynik.
+The score is `100 × correctly guessed other people's quotes / all other people's quotes in the game`. "Other people's" here means **authored by a person linked to a player's account**, not an account that entered the quote. One's own quotes do not increase the numerator or the denominator; timeouts and wrong types for other people's quotes lower the score.
 
-Tabela pokazuje najlepszą ukończoną rozgrywkę każdego konta, do 100 graczy. Wyższy procent wygrywa, przy remisie niższa suma czasu odpowiedzi na nieswoje cytaty. Dalsze remisy rozstrzyga termin ukończenia i ID gry. Gry zawierające tylko własne cytaty mają wynik procentowy null i nie są klasyfikowane. Rozgrywki w toku nie trafiają do rankingu.
+The table shows the best completed game of each account, for up to 100 players. A higher percentage wins; on a tie, the lower total answer time for other people's quotes wins. Further ties are settled by the completion date and the game ID. Games that contain only one's own quotes have a null percentage and are not ranked. Games in progress do not appear in the ranking.
 
-Zalogowani użytkownicy widzą nazwę gracza, procent, liczbę trafień, liczbę klasyfikowanych cytatów i czas. Ranking nie ujawnia treści cytatów, prywatnych nazw wizyt/klik ani cudzych typów. Historia oraz szczegóły rozgrywek są dostępne wyłącznie ich właścicielowi; administrator nie otrzymuje tu automatycznego dostępu do cudzych odpowiedzi.
+Signed-in users see the player's name, the percentage, the number of hits, the number of ranked quotes and the time. The ranking does not reveal quote text, private visit or clique names, or other players' guesses. History and game details are visible only to their owner; the administrator gets no automatic access to other people's answers.
 
 ## API
 
-| Metoda i ścieżka | Działanie |
+| Method and path | Action |
 | --- | --- |
-| `POST /api/quote-games` | `{visitId, cliqueIds, secondsPerQuestion}`; dokładnie jeden rodzaj zakresu; odpowiedź 201 |
-| `GET /api/quote-games?page=0` | Własna historia, po 20 gier |
-| `GET /api/quote-games/{id}` | Wznowienie z aktualnym czasem i własnymi wynikami; zapisuje timeout, jeśli termin minął |
-| `POST /api/quote-games/{id}/next` | Uruchomienie następnego pytania; body `{}` |
-| `POST /api/quote-games/{id}/guesses` | `{roundId, authorId}`; `authorId=null` tylko po upływie terminu |
-| `GET /api/quote-games/leaderboard` | Ranking ukończonych gier |
+| `POST /api/quote-games` | `{visitId, cliqueIds, secondsPerQuestion}`; exactly one kind of scope; response 201 |
+| `GET /api/quote-games?page=0` | Own history, 20 games per page |
+| `GET /api/quote-games/{id}` | Resume with the current time and own results; saves a timeout if the deadline has passed |
+| `POST /api/quote-games/{id}/next` | Starts the next question; body `{}` |
+| `POST /api/quote-games/{id}/guesses` | `{roundId, authorId}`; `authorId=null` only after the deadline has passed |
+| `GET /api/quote-games/leaderboard` | Ranking of completed games |
 
-Wszystkie endpointy wymagają uwierzytelnienia; operacje POST także CSRF. Tworzenie z cudzej wizyty/kliki oraz odczyt cudzej gry zwracają 404. Zapis niebieżącej lub już zakończonej rundy zwraca 409. Tożsamość, poprawność, czas, punktacja i kolejność pochodzą z serwera.
+All endpoints require authentication; POST operations also require CSRF. Creating a game from someone else's visit or clique, and reading someone else's game, return 404. Saving an answer for a round that is not the current one, or for a game that has already ended, returns 409. Identity, correctness, time, scoring and order all come from the server.
 
-## Model danych i testy
+## Data model and tests
 
-Moduł: `org.example.meeter.quote.game`. Encje: `QuoteGame`, `GameRound`, `QuoteGuess`, `GameCandidate`, `GameClique`. Powiązania zakresu i kandydatów mają własne ID, `created_at`, `created_by_id` przez istniejący `RelationshipRecord`. Usunięcie gry usuwa jej rundy, typy i powiązania, nie osoby, kliki ani cytaty. Testy muszą usuwać gry przed cytatami i ich autorami.
+Module: `org.example.meeter.quote.game`. Entities: `QuoteGame`, `GameRound`, `QuoteGuess`, `GameCandidate`, `GameClique`. The scope and candidate links have their own IDs, `created_at` and `created_by_id` through the existing `RelationshipRecord`. Deleting a game removes its rounds, candidates and links, but not people, cliques or quotes. Tests must delete games before the quotes and their authors.
 
-Interfejs: `src/QuoteGamePanel.jsx`, menu „Zgadnij autora”, wybór zakresu, licznik czasu, typowanie, wynik po odpowiedzi, wznowienie z historii oraz ranking.
+Interface: `src/QuoteGamePanel.jsx`, the "Guess the author" menu entry, scope selection, the countdown, answering, the result after an answer, resuming from history, and the ranking.
 
-Przy rozwoju wielu kont nie utożsamiaj ludzi po samym nazwisku. Dzisiejszy `Human` jest rekordem kartoteki właściciela; niezależne wpisy o tej samej realnej osobie wymagają jawnego modelu wspólnej tożsamości. Gra porównuje identyfikatory encji autorów z osobą powiązaną z kontem; nie scala automatycznie kartotek ani klik.
+When developing with many accounts, do not match people by surname alone. Today's `Human` is a record in the owner's own address book; separate entries describing the same real person need an explicit shared-identity model. The game compares the author entity IDs with the person linked to the account; it does not automatically merge address books or cliques.
 
-## Wybór wizyty
-GET /api/quote-games/visits?q=&page=0&size=10 zwraca gotową listę wizyt (id, name, startDate, participantCount), od najnowszych dat, z ID malejąco przy remisie. Filtr nazwy jest opcjonalny. Lista i tworzenie gry stosują tę samą regułę: twórca lub rzeczywisty uczestnik po linked Human ID. Administrator nie omija tej reguły. Zwykłe API interakcji pozostaje ograniczone do właściciela. Cudza wizyta bez udziału gracza zwraca 404 przy tworzeniu gry.
+## Visit selection
 
-## KTO ETA SKAZAŁ
-User-requested separate game, alongside the original visit/clique game. POST /api/quote-games/single accepts {secondsPerQuestion}, draws one uniformly random author with public quotes and one random public quote by that author, and persists exactly one round. All Human IDs are answer candidates (including imported/foreign-owned people); only IDs and names are exposed. No author identity is revealed before answering. Existing timer, public-retraction, ownership, CSRF, self-quote and guess rules apply. scopeType=SINGLE uses existing columns; no schema migration. GET /api/quote-games/single/history and /api/quote-games/single/leaderboard serve only SINGLE games. The original history and leaderboard exclude SINGLE games. The single=true query parameter remains supported for API compatibility. The UI offers separate menu entries and resets local state when switching games.
+`GET /api/quote-games/visits?q=&page=0&size=10` returns a ready-made list of visits (id, name, startDate, participantCount), from the latest dates, with descending IDs for ties. The name filter is optional. The list and game creation use the same rule: the creator or an actual participant identified by the linked Human ID. The administrator does not bypass this rule. The ordinary interactions API stays limited to the owner. Creating a game from someone else's visit in which the player does not take part returns 404.
 
+## Single-quote game ("Who said it")
+
+A separate game requested by the user, alongside the original visit and clique game. `POST /api/quote-games/single` accepts `{secondsPerQuestion}`, draws one author uniformly at random among those with public quotes, then one random public quote by that author, and saves exactly one round. All Human IDs are answer candidates, including imported and foreign-owned people; only IDs and names are exposed. No author identity is revealed before the answer. The existing timer, public-retraction, ownership, CSRF, self-quote and guess rules apply. `scopeType=SINGLE` uses the existing columns, so no schema migration is needed. `GET /api/quote-games/single/history` and `/api/quote-games/single/leaderboard` return only SINGLE games. The original history and leaderboard exclude SINGLE games. The `single=true` query parameter remains supported for API compatibility. The interface shows separate menu entries and resets the local state when switching between games.

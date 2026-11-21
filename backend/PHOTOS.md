@@ -1,76 +1,76 @@
-# Zdjęcia i profilówki
+# Photos and profile pictures
 
-## Własny profil i archiwum
+## Own profile and archive
 
-„Moje dane” w nagłówku otwiera edycję imienia, nazwiska, urodzin, płci, miasta i linku do Facebooka oraz zmianę portretu z pliku lub publicznego URL. `GET/PUT /api/people/self` i `GET/POST /api/people/self/photo` identyfikują osobę wyłącznie przez Human ID powiązany z sesją. Działają również dla importowanych rekordów i osób należących do innego konta, bez zmiany właściciela, domu, kliki ani metadanych tożsamości. Zapis wymaga CSRF; obowiązują dotychczasowe limity i ochrona pobierania. Odczyt `/self/photo` nie zależy od wykluczeń katalogu.
+"My data" in the header opens editing of first name, last name, birthday, gender, city and Facebook link, and changing the portrait from a file or a public URL. `GET`/`PUT /api/people/self` and `GET`/`POST /api/people/self/photo` identify the person only by the Human ID linked to the session. They also work for imported records and people owned by another account, without changing the owner, home, clique or identity metadata. Writes require CSRF; the existing limits and download protections apply. Reading `/self/photo` does not depend on the directory exclusions.
 
-Każda podmiana profilówki (także przez właściciela rekordu lub administratora) zachowuje poprzednią zawartość w oddzielnym folderze `app.photos.former-directory` (domyślnie `backend/data/photos/former-people/`). Poprzedni rekord Photo zachowuje ID, UUID i datę, otrzymuje nową losową nazwę pliku archiwum oraz typ `FORMER_HUMAN_PHOTO`. Dla legacy `profile_photo_file` bez metadanych powstaje rekord archiwalny bez wymyślania historycznej daty. Archiwum nie ma publicznego endpointu. Bieżący portret nadal wskazuje nowy rekord `PROFILE_PICTURE`. Migracja V6 rozszerza enum tabeli `photos`; wcześniejsze migracje pozostają bez zmian.
+Every replacement of a profile picture (including by the record's owner or an administrator) keeps the previous content in a separate folder `app.photos.former-directory` (default `backend/data/photos/former-people/`). The previous Photo record keeps its ID, UUID and date, receives a new random archive file name and the type `FORMER_HUMAN_PHOTO`. For a legacy `profile_photo_file` without metadata, an archive record is created without inventing a historical date. The archive has no public endpoint. The current portrait still points to the new `PROFILE_PICTURE` record. Migration V6 extends the enum of the `photos` table; earlier migrations stay unchanged.
 
-Plik jest kopiowany do archiwum przed zatwierdzeniem transakcji, a z aktywnego folderu usuwany dopiero po zatwierdzeniu. Rollback usuwa nową kopię archiwalną i nowy portret, zachowując poprzedni plik i metadane. Błąd sprzątania po zatwierdzeniu pozostawia dodatkową kopię zamiast powodować utratę zdjęcia. Brak poprzedniego pliku blokuje podmianę, aby nie udawać udanej archiwizacji. Jest to aktualna reguła zastępująca wcześniejszy opis usuwania poprzednich profilówek. Backup musi obejmować oba foldery oraz bazę.
+The file is copied to the archive before the transaction is committed, and removed from the active folder only after the commit. A rollback deletes the new archive copy and the new portrait, and keeps the previous file and metadata. An error during cleanup after the commit leaves an extra copy rather than losing the photo. A replacement is blocked when there is no previous file, so that an archiving success is never pretended. This is the current rule, replacing the earlier description of deleting previous profile pictures. The backup must cover both folders and the database.
 
-Zdjęcia klik i import folderu w panelu administratora opisuje [CLIQUES.md](CLIQUES.md). Typ `CLIQUE` i przypisanie `cliques.photo_id` dodaje migracja V4; import nie uruchamia się automatycznie.
+Clique photos and the photo import from the administrator's folder panel are described in [CLIQUES.md](CLIQUES.md). The `CLIQUE` type and the `cliques.photo_id` assignment are added by migration V4; the import never starts automatically.
 
-## Ikony kategorii miejsc
+## Place category icons
 
-Grafiki PNG kategorii są w `backend/data/photos/placeCategories/` (konfiguracja `app.photos.place-categories-directory`). Zalogowani odczytują je przez `GET /api/places/category-icons/{filename}`; endpoint akceptuje tylko proste nazwy PNG i pliki wewnątrz tego katalogu. Nie udostępnia innych katalogów zdjęć. Przy przenoszeniu aplikacji zachowaj ten folder obok pozostałych plików runtime.
+The PNG icons of the categories are in `backend/data/photos/placeCategories/` (configuration `app.photos.place-categories-directory`). Signed-in users read them through `GET /api/places/category-icons/{filename}`; the endpoint accepts only simple PNG names and files inside this folder. It does not expose other photo folders. When moving the application, keep this folder next to the other runtime files.
 
-`src/PlacesCategoriesDict.js` przypisuje kategorię do pliku. Wspólny TripMap używa go na mapie osoby i przy podróżach (również w kalendarzu). Dopasowanie pomija wielkość liter i nadmiarowe spacje. Ikony mają jasne tło dla czytelności w obu motywach. Nieznana/pusta kategoria lub brak pliku zachowuje zwykły punkt; nazwy miejsc pozostają w podpowiedziach. Punkty `/api/people/browse/{id}/map` zawierają kategorię źródłowego miejsca.
+`src/PlacesCategoriesDict.js` assigns a category to a file. The shared TripMap uses it on the person's map and for trips (including in the calendar). The matching ignores letter case and extra spaces. The icons have light backgrounds so they remain readable in both themes. An unknown or empty category, or a missing file, keeps the plain point; place names remain in the suggestions. The points of `/api/people/browse/{id}/map` contain the category of the source place.
 
-## Model zgodny z migracją
+## Model compatible with the migration
 
-`org.example.meeter.multimedia.photo.Photo` odwzorowuje tabelę `photos`: `id`, `photo_name`, `latitude`, `longitude`, `photo_type`, `generation_time`, `uuid`. Typ jest tekstową nazwą enuma: `PROFILE_PICTURE`, `EVENT`, `TRIP`, `SUPERPOWER`. Model celowo nie wymaga dodatkowego właściciela ani nowego czasu utworzenia dla importowanych metadanych. Nie ma publicznego endpointu do odczytu całej tabeli zdjęć.
+`org.example.meeter.multimedia.photo.Photo` maps the `photos` table: `id`, `photo_name`, `latitude`, `longitude`, `photo_type`, `generation_time`, `uuid`. The type is the text name of the enum: `PROFILE_PICTURE`, `EVENT`, `TRIP`, `SUPERPOWER`. The model deliberately does not require an extra owner or a new creation time for imported metadata. There is no public endpoint that reads the whole photo table.
 
-`Human.profilePhoto` to relacja jeden-do-jednego przez `people.profile_photo_id`, zgodna z oryginałem. Podczas migracji zachowaj identyfikatory zdjęć i odwołania osób; po imporcie ustaw licznik ID powyżej maksimum importowanych ID zgodnie z używaną bazą. Kopiuj pliki wskazane przez `photos.photo_name` do katalogu `app.photos.directory` (domyślnie `backend/data/photos/people/`). Nazwa oznacza pojedynczy plik, bez ścieżki ani URL. PNG, JPEG i GIF są serwowane z typem wynikającym z zawartości. Brak pliku, niewłaściwy typ zdjęcia, niebezpieczna nazwa lub dowiązanie prowadzące poza katalog daje 404. Nie umieszczaj plików w publicznych zasobach statycznych.
+`Human.profilePhoto` is a one-to-one relation through `people.profile_photo_id`, as in the original. During migration, keep the photo IDs and the person references; after the import, set the ID counter above the maximum imported ID according to the database in use. Copy the files named by `photos.photo_name` into the `app.photos.directory` folder (default `backend/data/photos/people/`). The name denotes a single file, without a path or URL. PNG, JPEG and GIF are served with a type derived from their content. A missing file, a wrong photo type, an unsafe name or a link pointing outside the folder returns 404. Do not put files in public static resources.
 
-DTO nadal udostępnia `profilePhotoUrl` jako `/api/people/{id}/photo?v={uuid zdjęcia}`. Dotychczasowy frontend używa tego pola również dla uczestników i awatarów. Odczyt wymaga własności osoby; cytaty nadal pomijają portrety cudzych osób. Gdy relacja jest pusta, pozostaje obsługa starszego `profile_photo_file`. Nowe importy profilówek zapisują również rekord `Photo` typu `PROFILE_PICTURE`. Usuwanie osoby ani zmiana profilówki nie usuwa kaskadowo metadanych zdjęcia.
+The DTO still exposes `profilePhotoUrl` as `/api/people/{id}/photo?v={photo UUID}`. The existing frontend uses this field for participants and avatars too. Reading requires ownership of the person; quotes still omit the portraits of other people's authors. When the relation is empty, the legacy `profile_photo_file` is still supported. New profile-picture imports also save a `Photo` record of type `PROFILE_PICTURE`. Deleting a person or changing the profile picture does not cascade-delete the photo metadata.
 
-Wszystkie cztery typy można przechowywać w tabeli `photos`. Sam typ nie dodaje galerii ani powiązań do podróży i supermocy; oryginalne `Event` i `Citybreak` nie miały relacji do tej tabeli. Obecny mechanizm obrazów wydarzeń opisany poniżej pozostaje niezależny. Migracja rekordów i kopiowanie plików nie uruchamiają się automatycznie przy starcie aplikacji.
+All four types can be stored in the `photos` table. The type itself does not add a gallery or links to trips and superpowers; the original `Event` and `Citybreak` had no relation to this table. The event image mechanism described below stays independent. Migrating photo records and copying files do not run automatically at application start.
 
-## Zdjęcia wydarzeń
+## Event photos
 
-`POST /api/events` zapisuje wydarzenie, towarzystwo i opcjonalne zdjęcie w ramach jednej transakcji. `placeString` pozwala dopisać opis miejsca niezależnie od wybranego `placeId`. `photoName` to opcjonalna etykieta do 255 znaków, a nie nazwa pliku na dysku. Dostępne jest najwyżej jedno źródło zdjęcia:
+`POST /api/events` saves the event, its participants and an optional photo in one transaction. `placeString` lets you add a place description independently of the selected `placeId`. `photoName` is an optional label of up to 255 characters, not a file name on disk. At most one photo source is accepted:
 
-- `photoUrl`: bezpośredni publiczny link, pobierany przez ten sam zabezpieczony klient HTTP co profilówki.
-- `photoData`: zawartość pliku zakodowana w Base64, bez prefiksu data URL; oryginalny plik do 4 MB.
-- `photoEventId`: ID wcześniejszego własnego eventu ze zdjęciem. Współdzielona jest lokalna kopia pliku; nie jest pobierana ponownie.
+- `photoUrl`: a direct public link, downloaded by the same protected HTTP client as profile pictures.
+- `photoData`: the file contents encoded in Base64, without the data URL prefix; the original file is up to 4 MB.
+- `photoEventId`: the ID of an earlier own event that has a photo. The local copy of the file is shared; it is not downloaded again.
 
-Bez źródła event jest zapisywany bez zdjęcia. Obrazy są dekodowane (do 16 megapikseli), pozbawiane metadanych i zapisywane jako JPEG z zachowaniem proporcji, z dłuższym bokiem do 1600 px. Katalog: `backend/data/photos/events/`, konfigurowany przez `app.photos.events-directory`. Nazwy plików to losowe UUID; etykieta użytkownika nie wpływa na ścieżkę. Wycofanie transakcji usuwa nowo zapisany plik.
+Without a source, the event is saved without a photo. Images are decoded (up to 16 megapixels), stripped of metadata and saved as JPEG with the aspect ratio preserved and a longest side of up to 1600 px. The folder is `backend/data/photos/events/`, configured by `app.photos.events-directory`. File names are random UUIDs; the user's label does not affect the path. A rollback of the transaction deletes the newly saved file.
 
-DTO eventu zawiera `details.photoUrl` (lokalny adres lub null), `details.photoName` i `details.placeString`. `GET /api/events/{id}/photo` wymaga zalogowania oraz własności eventu. Formularz pozwala wyszukiwać wcześniejsze wydarzenia po nazwie i przeglądać strony ich zdjęć. Żadna z tych kopii nie jest umieszczana w `resources/static`.
+The event DTO contains `details.photoUrl` (the local address or null), `details.photoName` and `details.placeString`. `GET /api/events/{id}/photo` requires sign-in and ownership of the event. The form lets you search earlier events by name and browse the pages of their photos. None of these copies is placed in `resources/static`.
 
-## Edycja zdjęć wydarzeń
+## Editing event photos
 
-Edycja `PUT /api/events/{id}` stosuje te same źródła zdjęć i zabezpieczenia co tworzenie. Zachowanie zdjęcia wymaga `photoEventId` z ID edytowanego eventu (formularz ustawia je domyślnie); brak źródła odpina zdjęcie. Odpięcie lub zastąpienie nie usuwa poprzedniego pliku, ponieważ inne eventy mogą go używać. Nieudany zapis zachowuje poprzedni stan rekordu i sprząta nowe pliki przez istniejącą synchronizację transakcji.
+Editing with `PUT /api/events/{id}` applies the same photo sources and protections as creation. Keeping a photo requires `photoEventId` set to the ID of the edited event (the form sets it by default); having no source detaches the photo. Detaching or replacing does not delete the previous file, because other events may use it. A failed save keeps the previous state of the record and removes the new files through the existing transaction synchronisation.
 
-## Zdjęcia osób — API
+## Person photos — API
 
-Modal profilu umożliwia właścicielowi osoby lub administratorowi dodanie lub zmianę zdjęcia z pliku albo publicznego linku, także dla osoby zaimportowanej bez właściciela lub należącej do innego konta. `POST /api/people/{id}/photo` przyjmuje dokładnie jedno niepuste pole: `url` lub `photoData` (Base64 bez prefiksu data URL). Limity pliku i normalizacja pozostają wspólne: 4 MB, 16 megapikseli, JPEG 512×512. `GET /api/people/browse/{id}` zwraca `canEditPhoto`, wyliczane z własności osoby lub roli administratora. Wyjątek administratora dotyczy tylko zapisu zdjęcia; nie zmienia właściciela osoby ani zasad zwykłego odczytu zdjęć. Dla cudzej osoby odpowiedź zapisu wskazuje katalogowy adres portretu. Nowe zdjęcie aktualizuje też awatar karty bez odświeżania strony.
+The profile dialog lets the owner of a person, or an administrator, add or change the photo from a file or a public link, including for a person imported without an owner or belonging to another account. `POST /api/people/{id}/photo` accepts exactly one non-empty field: `url` or `photoData` (Base64 without the data URL prefix). The file limits and normalisation are shared: 4 MB, 16 megapixels, JPEG 512×512. `GET /api/people/browse/{id}` returns `canEditPhoto`, computed from the person's ownership or the administrator role. The administrator exception applies only to writing a photo; it does not change the person's owner or the rules for ordinary photo reads. For someone else's person, the write response points to the directory portrait address. A new photo also updates the card's avatar without reloading the page.
 
-Formularz osoby przyjmuje opcjonalne `profilePhotoUrl`: bezpośredni publiczny link HTTP/HTTPS do obrazu. Backend pobiera plik (do 4 MB, do 20 sekund), sprawdza dekoderem jego zawartość i wymiary (do 16 megapikseli), a następnie zapisuje wykadrowany JPEG 512×512 bez metadanych.
+The person form accepts an optional `profilePhotoUrl`: a direct public HTTP/HTTPS link to an image. The backend downloads the file (up to 4 MB, up to 20 seconds), checks its contents and dimensions with the decoder (up to 16 megapixels), and then saves a cropped JPEG of 512×512 without metadata.
 
-Pliki trafiają do `backend/data/photos/people/`. Nazwa ma postać `<uuid-osoby>-<uuid-zdjęcia>.jpg`, więc polskie litery, duplikaty nazwisk i nazwy zdalnych plików nie powodują kolizji. Oryginalny link nie jest używany do wyświetlania zdjęcia ani przechowywany przy osobie.
+Files go to `backend/data/photos/people/`. The name has the form `<person UUID>-<photo UUID>.jpg`, so Polish letters, duplicate surnames and remote file names cannot collide. The original link is not used to display the photo and is not stored with the person.
 
-- `POST /api/people` — opcjonalne `profilePhotoUrl` obok dotychczasowych pól.
-- `POST /api/people/{id}/photo` — zmiana profilówki, JSON `{ "url": "https://example.org/photo.jpg" }`.
-- `GET /api/people/{id}/photo` — własna lokalna kopia JPEG; wymaga zalogowania i prawa do osoby.
-- DTO osób oraz uczestników interakcji zawierają `profilePhotoUrl` wskazujące na lokalny endpoint, a nie zdalną witrynę.
+- `POST /api/people` — optional `profilePhotoUrl` alongside the existing fields.
+- `POST /api/people/{id}/photo` — changes the profile picture, JSON `{ "url": "https://example.org/photo.jpg" }`.
+- `GET /api/people/{id}/photo` — the person's own local JPEG copy; requires sign-in and access to the person.
+- Person and interaction participant DTOs contain a `profilePhotoUrl` that points to the local endpoint, not to a remote website.
 
-Zmiana zdjęcia usuwa poprzedni plik dopiero po zatwierdzeniu transakcji. Nieudany import zachowuje poprzednią profilówkę; wycofanie zapisu usuwa nowy plik. Jeżeli import przy dodawaniu osoby się nie powiedzie, osoba nie jest zapisywana częściowo.
+A photo change deletes the previous file only after the transaction is committed. A failed import keeps the previous profile picture; a rolled-back save deletes the new file. If the import fails while a person is being added, the person is not saved partially.
 
-Pobieranie nie przekazuje zdalnym serwerom cookie ani danych konta. Dozwolone są standardowe porty 80 i 443. Adresy lokalne, prywatne, multicast, link-local, usługi metadanych i niedozwolone adresy IPv6 są blokowane, także po przekierowaniu. DNS jest sprawdzany w resolverze używanym bezpośrednio przez klienta HTTP. Pobranie nie może przejść z HTTPS na HTTP. SVG i inne pliki nieobsługiwane przez dekoder obrazu nie są zapisywane.
+Downloading does not send cookies or account data to remote servers. The standard ports 80 and 443 are allowed. Local, private, multicast, link-local, metadata-service and disallowed IPv6 addresses are blocked, including after a redirect. DNS is checked in the resolver used directly by the HTTP client. A download cannot go from HTTPS to HTTP. SVG and other files the image decoder does not support are not saved.
 
-Na Windows uruchom `./start.ps1` w folderze backendu. Skrypt używa zaufanego systemowego magazynu certyfikatów, nie wyłącza sprawdzania TLS.
+On Windows, run `./start.ps1` in the backend folder. The script uses the trusted system certificate store and does not disable TLS verification.
 
-## Historyczne dane przykładowe
+## Historical sample data
 
-Generator przykładowych danych i pobieranie demonstracyjnych portretów zostały usunięte. Dawniej utworzone osoby mogą nadal mieć znacznik demo=true oraz lokalne zdjęcia. Usunięcie generatora nie kasuje istniejących rekordów ani plików.
+The sample-data generator and the download of demonstration portraits have been removed. People created earlier may still have the flag `demo=true` and local photos. Removing the generator does not delete existing records or files.
 
-## Profilówki we wspólnej liście ludzi
+## Profile pictures in the shared people list
 
-DTO uczestników interakcji używa zwykłego adresu portretu dla własnych osób. Dla osób zaimportowanych bez właściciela lub należących do innego konta wskazuje istniejący endpoint katalogu `/api/people/browse/{id}/photo`, z zachowaniem parametru wersji zdjęcia. Osoby wykluczone z katalogu przez `my_exes`, których konto nie posiada, nie otrzymują adresu portretu. Dzięki temu kalendarz wyświetla dostępne portrety importowanych uczestników bez zmiany uprawnień endpointów zdjęć.
+The participant DTO uses the normal portrait address for the person's own records. For people imported without an owner or belonging to another account, it points to the existing directory endpoint `/api/people/browse/{id}/photo`, keeping the photo version parameter. People excluded from the directory by `my_exes`, whose account is not held, do not receive a portrait address. This lets the calendar show the available portraits of imported participants without changing the permissions of the photo endpoints.
 
-Na wyraźne życzenie użytkownika wspólny katalog osób pokazuje wszystkie rekordy Human po zalogowaniu. Jego DTO wskazuje na GET /api/people/browse/{id}/photo, który udostępnia profilówki także osób bez właściciela i przypisanych innym kontom. Zachowuje walidację typu zdjęcia, pliku i ścieżki. Dotychczasowy GET /api/people/{id}/photo, selektory osób i zasady widoczności portretów w cytatach pozostają bez zmian. Zapis profilówki ma opisany wyżej wyjątek administratora.
+At the user's explicit request, the shared people directory shows all Human records after sign-in. Its DTO points to `GET /api/people/browse/{id}/photo`, which serves profile pictures also for people without an owner and for people assigned to other accounts. It keeps the validation of photo type, file and path. The existing `GET /api/people/{id}/photo`, the person pickers and the visibility rules for portraits in quotes stay unchanged. The photo write has the administrator exception described above.
 
-Wyszukiwarki autorów cytatów i uczestników zwracają portrety przez istniejący uwierzytelniony `/api/people/browse/{id}/photo`; nie rozszerza to dostępu do zwykłego `/api/people/{id}/photo` ani zapisu zdjęć. Pozostałe DTO cytatów zachowują dotychczasowe reguły pomijania portretów obcych autorów.
+The author and participant search results return portraits through the existing authenticated `/api/people/browse/{id}/photo`; this does not extend access to the ordinary `/api/people/{id}/photo` or to photo writes. The other quote DTOs keep their earlier rules for omitting the portraits of other authors.
 
-Wyjątek dla historii: wybór uczestników obejmuje także `my_exes`. Portrety uczestników są dostępne przez uwierzytelniony GET `/api/people/participants/{id}/photo`, również dla ex; korzystają z tych samych zabezpieczeń plików co pozostałe portrety. Zwykły katalog i jego zdjęcia nadal wykluczają `my_exes`; wybór autora cytatu zachowuje dotychczasowe filtrowanie.
+Exception for history: participant selection also includes `my_exes`. Participant portraits are available through the authenticated `GET /api/people/participants/{id}/photo`, also for ex-partners; they use the same file protections as the other portraits. The ordinary directory and its photos still exclude `my_exes`; the quote-author selection keeps its existing filtering.
