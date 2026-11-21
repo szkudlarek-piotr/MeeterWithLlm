@@ -4,7 +4,23 @@
 
 - `experiments/participants/history.json` contains an exported personal interaction history. Agents must not open, read, parse, search, quote, or otherwise inspect its contents, including through scripts or diagnostic tools. Only an explicit later user instruction authorizing access to this file may override this prohibition. User-run training and export commands may continue to use this file.
 
-Read this file first when working on this project. It applies to the entire project; also check for more specific `AGENTS.md` files in directories you change. Follow the user's current request and preserve unrelated work.
+Read this file first when working on this project.
+
+## Standing rules from the project owner
+
+- **Synthetic sandbox data is the only data for testing.** The database behind `set_agent_sandbo_env.ps1` holds artificial records. Agents may read, write, modify and delete records there and run tests against it. Dot-source the script in the same PowerShell session as the command that needs it, and never print its values.
+- **Participant models are trained on real data and stay untouched.** Do not retrain, regenerate, overwrite or re-export `experiments/participants/artifacts/*.joblib` or `shared_metrics.json` with sandbox data, and do not change model input features in a way that breaks compatibility with the trained artifacts. Fix how and when suggestions are triggered and displayed, not the trained models.
+- **Documentation is bilingual.** Write every new or updated document in Polish and English (for example, a `Polski` section followed by an `English` section in the same file). Existing Polish-only text is migrated when the file is touched.
+- **UI has an English version.** Every UI change ships with English text. Put new strings in `src/i18n.js` with both `pl` and `en` keys and render them through `t('key')`. Polish is the default locale; English is selected with `localStorage['meeter.locale'] = 'en'`. Hardcoded Polish strings elsewhere are migrated when those components are changed.
+- **Commit after every complete change.** Write the commit message in English and end it with the attribution lines required by the session. Commit only the files belonging to the change. If a file already has someone else's uncommitted edits, say so in the reply before committing it.
+
+Zasady właściciela projektu (po polsku)
+
+- Dane testowe to wyłącznie sztuczna baza ze skryptu `set_agent_sandbo_env.ps1`. Agent może na niej czytać, zapisywać, modyfikować i usuwać rekordy oraz uruchamiać testy. Skrypt dot-sourcować w tej samej sesji PowerShell co polecenie, które go wymaga; wartości nie wypisywać.
+- Modele uczestników są trenowane na prawdziwych danych i pozostają nietknięte. Nie trenować, nie nadpisywać i nie eksportować ponownie `experiments/participants/artifacts/*.joblib` ani `shared_metrics.json` danymi testowymi; nie zmieniać cech wejściowych w sposób łamiący zgodność z wytrenowanymi artefaktami. Naprawiać można wyzwalanie i prezentację podpowiedzi, nie same modele.
+- Dokumentacja jest dwujęzyczna: nowe i zmieniane dokumenty w języku polskim i angielskim (np. sekcja `Polski`, a pod nią `English` w tym samym pliku).
+- Interfejs ma wersję angielską: każda zmiana UI zawiera teksty w obu językach, klucze w `src/i18n.js` (`pl` i `en`), renderowane przez `t('klucz')`. Domyślny język to polski; angielski włącza się przez `localStorage['meeter.locale'] = 'en'`.
+- Commit po każdej całościowej zmianie, z komunikatem po angielsku i wymaganymi liniami atrybucji. Commitować tylko pliki danej zmiany; jeśli plik ma cudze niezacommitowane zmiany, zaznaczyć to w odpowiedzi przed commitem. It applies to the entire project; also check for more specific `AGENTS.md` files in directories you change. Follow the user's current request and preserve unrelated work.
 
 ## What this project is
 
@@ -182,6 +198,10 @@ Authentication audit: V7 creates auth_events, storing LOGIN_SUCCESS, LOGIN_FAILU
 ## Event creation and images
 
 Photo migration compatibility: `org.example.meeter.multimedia.photo.Photo` maps the original `photos` metadata table with string `PhotoType` values PROFILE_PICTURE, EVENT, TRIP, SUPERPOWER. `Human.profilePhoto` uses `people.profile_photo_id`; migrated portrait files belong in `app.photos.directory` under their original `photo_name`. Serve them only through the authenticated person photo endpoint. Keep the legacy `profile_photo_file` fallback and do not cascade-delete Photo metadata. See `backend/PHOTOS.md` for migration limits and file handling.
+
+## Superpowers
+
+`V14__superpowers.sql` creates the dedicated `superpowers` dictionary (`id`, `superpower_name`); `V15__superpower_metadata.sql` adds the public `uuid`, optional `superpower_photo_id` (photos), `added_by_id` (app_users) and `add_time`. `V16__human_superpowers.sql` adds the `human_superpower` join table (`id`, `human_id`, `superpower_id`, `add_time`, `added_by_id`, unique pair, FKs to `people`/`superpowers`/`app_users`). The `org.example.meeter.superpowers` package holds `Superpower`, `HumanSuperpower`, their repositories, services and controllers (authenticated `GET /api/superpowers`, `GET /api/superpowers/{id}`, `POST /api/superpowers` with CSRF; `GET/POST /api/people/{humanId}/superpowers`, `DELETE /api/people/{humanId}/superpowers/{superpowerId}`; link writes are allowed for the admin, the person themselves, the person's creator and the person's spouse (the other side of a wedding), idempotent add; v2 maps identifiers to UUIDs). It is separate from legacy `photos` rows with `photo_type='SUPERPOWER'`, which stay inert. The sidebar action `Dodaj supermoc` (`src/SuperpowerForm.jsx`) creates dictionary entries; the person profile (`src/PersonProfile.jsx`) lets the person's creator add and remove superpowers (`GET/POST /api/people/{humanId}/superpowers`, `DELETE /api/people/{humanId}/superpowers/{superpowerId}`; the profile DTO exposes `canEditSuperpowers` using the same admin/self/creator/spouse rule). Manual import from the original database: root `migrate_superpowers.sql` (idempotent, trimmed case-insensitive name match, `added_by_id` set to the importing account); never run it automatically.
 
 `InteractionForm.jsx` handles event start/end, optional personal arrival/departure, an optional selected place plus independent `placeString`, description, and selected people. Blank personal dates mean the event boundaries. Keep personal participation inside the event range and validate ordering on both client and server.
 
