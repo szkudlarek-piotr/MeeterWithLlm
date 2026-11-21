@@ -35,9 +35,7 @@ export default function MyQuotesPanel() {
     }
   }
 
-  return <section className="my-quotes" aria-labelledby="my-quotes-title">
-    <h3 id="my-quotes-title">{t('myQuotes.title')}</h3>
-    <p className="field-hint">{t('myQuotes.intro')}</p>
+  return <section className="my-quotes" aria-label={t('myQuotes.title')}>
     {error && <p className="field-error" role="alert">{error}</p>}
     {!quotes && !error && <p role="status">{t('myQuotes.loading')}</p>}
     {quotes && quotes.length === 0 && <p className="field-hint">{t('myQuotes.empty')}</p>}
