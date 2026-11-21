@@ -81,7 +81,7 @@ export default function HumanForm({ onSave, cliques = [], places = [] }) {
         {error && <p className="field-error" role="alert">{error}</p>}
       </div>
     </div>
-    <p className="relation-note">Zdjęcie jest pobierane podczas zapisu. Piosenkę i supermoce dodamy po przygotowaniu ich formularzy.</p>
+    <p className="relation-note">Zdjęcie jest pobierane podczas zapisu. Piosenkę i przypisywanie supermocy dodamy później.</p>
     <p className="demo-note">Osoba zostanie zapisana w osobnej bazie developerskiej.</p>
     <button className="primary submit" type="submit" disabled={saving}>{saving ? 'Zapisywanie…' : 'Dodaj osobę →'}</button>
   </form>

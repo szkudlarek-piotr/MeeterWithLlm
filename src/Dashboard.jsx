@@ -6,6 +6,7 @@ import CalendarPanel, { PersonAvatar } from './CalendarPanel.jsx'
 import { CliqueForm, PlaceForm } from './EntityForms.jsx'
 import InteractionForm, { interactionEntry, interactionTypes } from './InteractionForm.jsx'
 import QuoteForm from './QuoteForm.jsx'
+import SuperpowerForm from './SuperpowerForm.jsx'
 import QuoteGamePanel from './QuoteGamePanel.jsx'
 import PeoplePanel from './PeoplePanel.jsx'
 import CliquesPanel from './CliquesPanel.jsx'
@@ -25,7 +26,7 @@ const categories = [
   ['Śluby', 'Dodaj ślub', '♡', 'Nazwa ślubu'],
   ['Cytaty', 'Dodaj cytat', '❝', 'Treść cytatu'],
 ]
-export default function Dashboard({ email, actorId, roles = [], publicQuotesOnly, onTogglePublicQuotes }) {
+export default function Dashboard({ email, actorId, roles = [], profileVersion, publicQuotesOnly, onTogglePublicQuotes }) {
   const [people, setPeople] = useState([])
   const [, setHumans] = useState([])
   const [cliques, setCliques] = useState([])
@@ -92,7 +93,7 @@ export default function Dashboard({ email, actorId, roles = [], publicQuotesOnly
     loadMonth().catch(error => { if (!controller.signal.aborted) setCalendarError(error.message) })
       .finally(() => { if (!controller.signal.aborted) setCalendarLoading(false) })
     return () => controller.abort()
-  }, [view, month, calendarVersion])
+  }, [view, month, calendarVersion, profileVersion])
 
   function openForm(item) {
     setCategory(item)
@@ -158,6 +159,13 @@ export default function Dashboard({ email, actorId, roles = [], publicQuotesOnly
     formDialog.current.close()
   }
 
+  async function saveSuperpower(superpower) {
+    const saved = await api('/superpowers', { body: { superpowerName: superpower.superpowerName } })
+    setApiError('')
+    setNotice(`Zapisano supermoc: ${saved.superpowerName}`)
+    formDialog.current.close()
+  }
+
   return (
     <>
       <div className={`dashboard ${view === 'calendar' ? 'calendar-layout' : ''}`}>
@@ -195,7 +203,7 @@ export default function Dashboard({ email, actorId, roles = [], publicQuotesOnly
 
       </div>
 
-      <dialog ref={formDialog} className="login-dialog" aria-labelledby="add-title"><button className="close-dialog" aria-label="Zamknij" onClick={() => formDialog.current.close()}>×</button><p className="eyebrow">NOWA HISTORIA</p><h2 id="add-title">{category[1]}</h2>{category[0] === 'Ludzie' ? <HumanForm key={formVersion} onSave={saveHuman} cliques={cliques} places={places} /> : category[0] === 'Kliki' ? <CliqueForm key={formVersion} places={places} onSave={saveClique} /> : category[0] === 'Miejsca' ? <PlaceForm key={formVersion} onSave={savePlace} /> : category[0] === 'Cytaty' ? <QuoteForm key={formVersion} onSave={saveQuote} /> : interactionTypes[category[0]] ? <InteractionForm key={formVersion} category={category[0]} actorId={actorId} initialDate={selectedDate} onSave={saveInteraction} /> : <form onSubmit={save}><label htmlFor="entry-name">{category[3]}</label><input id="entry-name" name="name" required maxLength={120} /><label htmlFor="entry-date">Data (opcjonalnie)</label><input key={selectedDate} id="entry-date" type="date" name="date" defaultValue={selectedDate} /><label htmlFor="entry-note">Notatka (opcjonalnie)</label><textarea id="entry-note" name="note" rows={3} maxLength={1000} /><p className="demo-note">Wpis zostanie dodany do wersji demo na czas tej sesji.</p><button className="primary submit">Zapisz</button></form>}</dialog>
+      <dialog ref={formDialog} className="login-dialog" aria-labelledby="add-title"><button className="close-dialog" aria-label="Zamknij" onClick={() => formDialog.current.close()}>×</button><p className="eyebrow">NOWA HISTORIA</p><h2 id="add-title">{category[1]}</h2>{category[0] === 'Ludzie' ? <HumanForm key={formVersion} onSave={saveHuman} cliques={cliques} places={places} /> : category[0] === 'Kliki' ? <CliqueForm key={formVersion} places={places} onSave={saveClique} /> : category[0] === 'Miejsca' ? <PlaceForm key={formVersion} onSave={savePlace} /> : category[0] === 'Cytaty' ? <QuoteForm key={formVersion} onSave={saveQuote} /> : category[0] === 'Supermoce' ? <SuperpowerForm key={formVersion} onSave={saveSuperpower} /> : interactionTypes[category[0]] ? <InteractionForm key={formVersion} category={category[0]} actorId={actorId} initialDate={selectedDate} onSave={saveInteraction} /> : <form onSubmit={save}><label htmlFor="entry-name">{category[3]}</label><input id="entry-name" name="name" required maxLength={120} /><label htmlFor="entry-date">Data (opcjonalnie)</label><input key={selectedDate} id="entry-date" type="date" name="date" defaultValue={selectedDate} /><label htmlFor="entry-note">Notatka (opcjonalnie)</label><textarea id="entry-note" name="note" rows={3} maxLength={1000} /><p className="demo-note">Wpis zostanie dodany do wersji demo na czas tej sesji.</p><button className="primary submit">Zapisz</button></form>}</dialog>
     </>
   )
 }

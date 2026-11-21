@@ -59,6 +59,12 @@ export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly,
   const [quoteRefresh, setQuoteRefresh] = useState(0)
   const [votingId, setVotingId] = useState(null)
   const [voteError, setVoteError] = useState('')
+  const [superpowers, setSuperpowers] = useState([])
+  const [dictionary, setDictionary] = useState([])
+  const [selectedSuperpower, setSelectedSuperpower] = useState('')
+  const [superpowerBusy, setSuperpowerBusy] = useState(false)
+  const [superpowerError, setSuperpowerError] = useState('')
+  const canEditSuperpowers = profile?.canEditSuperpowers === true
   const requestKey = `${person.id}:${section}:${page}:${retry}:${section === 'quotes' && publicQuotesOnly}`
   const refresh = section === 'quotes' ? quoteRefresh : 0
   const data = result?.key === requestKey ? result.data : null
@@ -83,6 +89,52 @@ export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly,
       .catch(failure => { if (!controller.signal.aborted) setProfileError(failure.message) })
     return () => controller.abort()
   }, [person.id, retry])
+  useEffect(() => {
+    if (!canEditSuperpowers) return
+    const controller = new AbortController()
+    setSuperpowerError('')
+    Promise.all([
+      api(`/people/${person.id}/superpowers`, { signal: controller.signal }),
+      api('/superpowers', { signal: controller.signal })
+    ]).then(([assigned, all]) => {
+      if (controller.signal.aborted) return
+      setSuperpowers(assigned)
+      setDictionary(all)
+      setSelectedSuperpower('')
+    }).catch(failure => { if (!controller.signal.aborted) setSuperpowerError(failure.message) })
+    return () => controller.abort()
+  }, [person.id, canEditSuperpowers])
+  const assignedSuperpowerIds = new Set(superpowers.map(item => String(item.superpowerId)))
+  const availableSuperpowers = dictionary.filter(item => !assignedSuperpowerIds.has(String(item.id)))
+
+  async function addSuperpower(event) {
+    event.preventDefault()
+    if (!selectedSuperpower) return
+    setSuperpowerBusy(true)
+    setSuperpowerError('')
+    try {
+      const saved = await api(`/people/${person.id}/superpowers`, { body: { superpowerId: selectedSuperpower } })
+      setSuperpowers(current => [...current, saved])
+      setSelectedSuperpower('')
+    } catch (failure) {
+      setSuperpowerError(failure.message)
+    } finally {
+      setSuperpowerBusy(false)
+    }
+  }
+
+  async function removeSuperpower(superpowerId) {
+    setSuperpowerBusy(true)
+    setSuperpowerError('')
+    try {
+      await api(`/people/${person.id}/superpowers/${superpowerId}`, { method: 'DELETE' })
+      setSuperpowers(current => current.filter(item => String(item.superpowerId) !== String(superpowerId)))
+    } catch (failure) {
+      setSuperpowerError(failure.message)
+    } finally {
+      setSuperpowerBusy(false)
+    }
+  }
   useEffect(() => {
     setError('')
     if (section === 'profile') return
@@ -109,9 +161,31 @@ export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly,
         {person.birthdayDate && <div><dt>Data urodzenia</dt><dd>{date(person.birthdayDate)}</dd></div>}
         {person.livesIn && <div><dt>Mieszka w</dt><dd>{person.livesIn}</dd></div>}
         {person.home && <div><dt>Dom</dt><dd>{person.home.name}</dd></div>}
-        {person.clique && <div><dt>Klika</dt><dd>{person.clique.cliqueName}</dd></div>}
+        {person.clique && <div><dt>Klika</dt><dd>
+          {profile?.cliqueIcon?.photoUrl && <img key={profile.cliqueIcon.photoUrl} className="person-clique-icon"
+            src={profile.cliqueIcon.photoUrl} alt="" width={32} height={32} onError={event => { event.currentTarget.hidden = true }} />}
+          {person.clique.cliqueName}
+        </dd></div>}
       </dl>
       {/^(https?:\/\/)/i.test(person.fbLink || '') && <a href={person.fbLink} target="_blank" rel="noopener noreferrer">Profil na Facebooku ↗</a>}
+      {canEditSuperpowers && <section className="superpower-editor" aria-labelledby="person-superpowers-title">
+        <h3 id="person-superpowers-title">Supermoce</h3>
+        {superpowerError && <p className="field-error" role="alert">{superpowerError}</p>}
+        {superpowers.length ? <ul className="superpower-list">
+          {superpowers.map(item => <li key={item.superpowerId}>
+            <span>{item.superpowerName}</span>
+            <button type="button" className="text-button" disabled={superpowerBusy} onClick={() => removeSuperpower(item.superpowerId)}>Usuń</button>
+          </li>)}
+        </ul> : <p className="field-hint">Brak przypisanych supermocy.</p>}
+        <form className="superpower-add" onSubmit={addSuperpower}>
+          <label htmlFor="superpower-picker">Dodaj supermoc</label>
+          <select id="superpower-picker" value={selectedSuperpower} disabled={superpowerBusy} onChange={event => { setSelectedSuperpower(event.target.value); setSuperpowerError('') }}>
+            <option value="">Wybierz supermoc…</option>
+            {availableSuperpowers.map(item => <option key={item.id} value={item.id}>{item.superpowerName}</option>)}
+          </select>
+          <button className="primary" type="submit" disabled={superpowerBusy || !selectedSuperpower}>{superpowerBusy ? 'Zapisywanie…' : 'Dodaj'}</button>
+        </form>
+      </section>}
       {profile?.canEditPhoto && <PhotoForm person={person} onSave={saved => { setPerson(saved); onPersonChange(saved) }} />}
       {profile && !profile.canEditPhoto && <p className="field-hint">Zdjęcie może zmienić właściciel rekordu osoby lub administrator.</p>}
       {!profile && !profileError && <p role="status" className="field-hint">Sprawdzanie uprawnień do zmiany zdjęcia…</p>}

@@ -119,7 +119,7 @@ export default function App() {
         </nav>
       </header>
       {message && <SessionMessage role="status">{message}</SessionMessage>}
-      {user ? <Dashboard key={`${user.id}-${profileVersion}`} email={user.username} actorId={user.humanId} roles={user.roles || []}
+      {user ? <Dashboard key={user.id} profileVersion={profileVersion} email={user.username} actorId={user.humanId} roles={user.roles || []}
         publicQuotesOnly={publicQuotesOnly} onTogglePublicQuotes={togglePublicQuotes} /> : <>
       <Intro>
         <p className="eyebrow">LUDZIE · SPOTKANIA · WSPOMNIENIA</p>

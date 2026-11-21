@@ -18,7 +18,7 @@ export function interactionEntry(item) {
   return {
     id: `interaction-${item.id}`, interactionId: item.id, category, icon: config.icon, name: item.name, note: item.longDesc,
     canAddParticipants: item.canAddParticipants, removableParticipantIds: item.removableParticipantIds || [],
-    date: item.startDate.slice(0, 10), endDate: item.endDate?.slice(0, 10), ongoing: item.type === 'FLATMATE' && !item.endDate,
+    startDate: item.startDate, date: item.startDate.slice(0, 10), endDate: item.endDate?.slice(0, 10), ongoing: item.type === 'FLATMATE' && !item.endDate,
     participants: item.participants, locations: [...new Set(locations)], details: item.details, type: item.type,
     recommendationPlaces: [...new Map([item.place, ...(item.details?.places || []), item.details?.ceremonyPlace, item.details?.partyPlace, item.details?.hotel].filter(Boolean).map(place => [place.id, place])).values()],
     startTime: ['MEETING', 'FLATMATE'].includes(item.type) ? null : item.startDate.slice(11, 16),
