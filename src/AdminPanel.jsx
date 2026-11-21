@@ -3,6 +3,7 @@ import { api } from './api.js'
 import ParticipationBackfillPanel from './ParticipationBackfillPanel.jsx'
 import AdminUserForm from './AdminUserForm.jsx'
 import AdminNewsForm from './AdminNewsForm.jsx'
+import SuperpowerPhotoImportPanel from './SuperpowerPhotoImportPanel.jsx'
 
 export default function AdminPanel({ onImported }) {
   const [folder, setFolder] = useState('')
@@ -18,7 +19,7 @@ export default function AdminPanel({ onImported }) {
       if (result.imported) onImported()
     } catch (error) { setError(error.message) } finally { setBusy(false) }
   }
-  return <div className="admin-tools"><AdminNewsForm /><AdminUserForm /><ParticipationBackfillPanel onChanged={onImported} /><section className="card admin-photo-import" aria-labelledby="clique-import-title">
+  return <div className="admin-tools"><AdminNewsForm /><AdminUserForm /><ParticipationBackfillPanel onChanged={onImported} /><SuperpowerPhotoImportPanel /><section className="card admin-photo-import" aria-labelledby="clique-import-title">
     <h3 id="clique-import-title">Import zdjęć klik</h3>
     <p>Wskaż folder na komputerze, na którym działa backend. Nazwy plików muszą odpowiadać ID istniejących klik, np. 12.jpg lub 27.png.</p>
     <p>Zdjęcia zostaną skopiowane jako pliki JPEG z nazwami UUID i przypisane do klik. Oryginały pozostaną w folderze. Kliki z przypisanym zdjęciem zostaną pominięte.</p>
