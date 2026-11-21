@@ -67,10 +67,12 @@ class FlywayMigrationTests {
             assertTrue(rows.next()); assertEquals(1,rows.getInt(1));
             // Synthetic release-note insert with the same shape as the manual release import.
             // The real import file is a local, untracked release script and is not available in CI.
-            statement.executeUpdate("INSERT INTO app_news (uuid, slug, title, content, published_at) VALUES (UUID(), '2026-11-08-wspolne-interakcje-profil-uczestnicy', 'Synthetic release', 'Synthetic content', CURRENT_TIMESTAMP)");
+            String slug="2026-11-08-wspolne-interakcje-profil-uczestnicy";
+            String releaseInsert="INSERT INTO app_news (uuid, slug, title, content, published_at) SELECT UUID(), '"+slug+"', 'Synthetic release', 'Synthetic content', CURRENT_TIMESTAMP WHERE NOT EXISTS (SELECT 1 FROM app_news WHERE slug='"+slug+"')";
+            statement.executeUpdate(releaseInsert);
             rows=statement.executeQuery("select uuid from app_news where slug='2026-11-08-wspolne-interakcje-profil-uczestnicy'");
             assertTrue(rows.next()); String newsUuid=rows.getString(1); assertNotNull(UUID.fromString(newsUuid));
-            statement.executeUpdate(releaseInsert);
+            statement.executeUpdate(releaseInsert); // Repeat must preserve the existing entry.
             rows=statement.executeQuery("select count(*), min(cast(uuid as varchar)) from app_news where slug='2026-11-08-wspolne-interakcje-profil-uczestnicy'");
             assertTrue(rows.next()); assertEquals(1,rows.getInt(1)); assertEquals(newsUuid,rows.getString(2));
         }
