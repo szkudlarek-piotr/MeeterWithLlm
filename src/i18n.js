@@ -45,6 +45,8 @@ const messages = {
     'myQuotes.empty': 'Nie ma cytatów, w których jesteś autorem.',
     'myQuotes.dropHere': 'Przeciągnij tutaj',
     'people.superpowers': 'Supermoce',
+    'locale.switchTo': 'English',
+    'locale.switchLabel': 'Przełącz na język angielski',
   },
   en: {
     'recommendations.section': 'Experimental participant suggestions',
@@ -91,11 +93,18 @@ const messages = {
     'myQuotes.empty': 'There are no quotes where you are the author.',
     'myQuotes.dropHere': 'Drop here',
     'people.superpowers': 'Superpowers',
+    'locale.switchTo': 'Polski',
+    'locale.switchLabel': 'Switch to Polish',
   },
 }
 
 export function getLocale() {
   try { return localStorage.getItem('meeter.locale') === 'en' ? 'en' : 'pl' } catch { return 'pl' }
+}
+
+export function setLocale(locale) {
+  try { localStorage.setItem('meeter.locale', locale === 'en' ? 'en' : 'pl') } catch { /* storage unavailable: keep the current locale */ }
+  window.location.reload()
 }
 
 export function t(key) {

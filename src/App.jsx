@@ -5,6 +5,7 @@ import { api } from './api.js'
 import SelfProfile from './SelfProfile.jsx'
 import InvitationForm from './InvitationForm.jsx'
 import RegistrationForm from './RegistrationForm.jsx'
+import { getLocale, setLocale, t } from './i18n.js'
 
 const publicQuotesCookie = 'meeter-public-quotes'
 const readPublicQuotesOnly = () => document.cookie.split(';').some(cookie => cookie.trim() === `${publicQuotesCookie}=true`)
@@ -106,6 +107,7 @@ export default function App() {
         <span className="brand-mark">m</span> meeter<span className="dot">.</span>
       </a>
         <nav className="actions" aria-label="Ustawienia i konto">
+          <button type="button" className="text-button locale-toggle" onClick={() => setLocale(getLocale() === 'en' ? 'pl' : 'en')} aria-label={t('locale.switchLabel')}>{t('locale.switchTo')}</button>
           <button className="theme-toggle" onClick={() => setDark(!dark)} aria-pressed={dark} aria-label="Tryb ciemny">
             <span aria-hidden="true">{dark ? '☀' : '☾'}</span>
             <span>{dark ? 'Tryb jasny' : 'Tryb ciemny'}</span>
