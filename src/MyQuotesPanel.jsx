@@ -13,6 +13,7 @@ export default function MyQuotesPanel() {
   const [error, setError] = useState('')
   const [busyUuid, setBusyUuid] = useState(null)
   const [dragged, setDragged] = useState(null)
+  const [overKey, setOverKey] = useState(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -39,17 +40,19 @@ export default function MyQuotesPanel() {
     {error && <p className="field-error" role="alert">{error}</p>}
     {!quotes && !error && <p role="status">{t('myQuotes.loading')}</p>}
     {quotes && quotes.length === 0 && <p className="field-hint">{t('myQuotes.empty')}</p>}
-    {quotes && quotes.length > 0 && <div className="my-quotes-board">
+    {quotes && <div className="my-quotes-board">
       {columns.map(column => {
         const items = quotes.filter(quote => quote.isPublic === column.isPublic)
-        return <section key={column.key} className="my-quotes-column" aria-labelledby={`my-quotes-${column.key}`}
-          onDragOver={event => event.preventDefault()}
-          onDrop={event => { event.preventDefault(); if (dragged) move(dragged, column.isPublic); setDragged(null) }}>
-          <h4 id={`my-quotes-${column.key}`}>{t(column.title)} <small>({items.length})</small></h4>
+        return <section key={column.key} className={`my-quotes-column${overKey === column.key ? ' is-drop-target' : ''}`} aria-labelledby={`my-quotes-${column.key}`}
+          onDragOver={event => { event.preventDefault(); setOverKey(column.key) }}
+          onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOverKey(null) }}
+          onDrop={event => { event.preventDefault(); setOverKey(null); if (dragged) move(dragged, column.isPublic); setDragged(null) }}>
+          <h4 id={`my-quotes-${column.key}`}>{t(column.title)} <small>{items.length}</small></h4>
+          {items.length === 0 && <p className="my-quotes-empty">{t('myQuotes.dropHere')}</p>}
           <ul>
             {items.map(quote => <li key={quote.uuid} draggable={busyUuid !== quote.uuid}
               onDragStart={event => { event.dataTransfer.setData('text/plain', quote.uuid); setDragged(quote) }}
-              onDragEnd={() => setDragged(null)}>
+              onDragEnd={() => { setDragged(null); setOverKey(null) }}>
               <QuoteContent quote={quote.quote} />
               <button type="button" className="text-button" disabled={busyUuid === quote.uuid} onClick={() => move(quote, !quote.isPublic)}>
                 {column.isPublic ? t('myQuotes.makePrivate') : t('myQuotes.makePublic')}

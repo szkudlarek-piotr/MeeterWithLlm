@@ -45,6 +45,7 @@ const messages = {
     'myQuotes.makePrivate': 'Ustaw jako prywatny',
     'myQuotes.loading': 'Wczytywanie cytatów…',
     'myQuotes.empty': 'Nie ma cytatów, w których jesteś autorem.',
+    'myQuotes.dropHere': 'Przeciągnij tutaj',
     'people.superpowers': 'Supermoce',
   },
   en: {
@@ -92,6 +93,7 @@ const messages = {
     'myQuotes.makePrivate': 'Make private',
     'myQuotes.loading': 'Loading quotes…',
     'myQuotes.empty': 'There are no quotes where you are the author.',
+    'myQuotes.dropHere': 'Drop here',
     'people.superpowers': 'Superpowers',
   },
 }

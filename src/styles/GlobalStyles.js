@@ -13,6 +13,7 @@ import cliques from './cliques.js'
 import admin from './admin.js'
 import recommendations from './recommendations.js'
 import selfProfile from './selfProfile.js'
+import myQuotes from './myQuotes.js'
 
 // Keep the cascade across shared classes and responsive overrides.
 export default createGlobalStyle`
@@ -30,4 +31,5 @@ export default createGlobalStyle`
   ${admin}
   ${recommendations}
   ${selfProfile}
+  ${myQuotes}
 `
