@@ -65,12 +65,9 @@ class FlywayMigrationTests {
             assertTrue(rows.next()); assertEquals(oldUuid,rows.getString(1));
             rows=statement.executeQuery("select count(*) from auth_events");
             assertTrue(rows.next()); assertEquals(1,rows.getInt(1));
-            // Manual release-note import: execute against this isolated schema only.
-            String release=Files.readString(Path.of("../import_news_2026_11_08.sql")).replace("vibecoded_meeter.","PUBLIC.");
-            // Execute the INSERT unchanged; MariaDB's transaction/ROW_COUNT diagnostics
-            // are client commands, not the behavior this isolated DML test needs.
-            String releaseInsert=release.substring(release.indexOf("INSERT INTO"),release.indexOf("SELECT ROW_COUNT()"));
-            statement.executeUpdate(releaseInsert);
+            // Synthetic release-note insert with the same shape as the manual release import.
+            // The real import file is a local, untracked release script and is not available in CI.
+            statement.executeUpdate("INSERT INTO app_news (uuid, slug, title, content, published_at) VALUES (UUID(), '2026-11-08-wspolne-interakcje-profil-uczestnicy', 'Synthetic release', 'Synthetic content', CURRENT_TIMESTAMP)");
             rows=statement.executeQuery("select uuid from app_news where slug='2026-11-08-wspolne-interakcje-profil-uczestnicy'");
             assertTrue(rows.next()); String newsUuid=rows.getString(1); assertNotNull(UUID.fromString(newsUuid));
             statement.executeUpdate(releaseInsert);
