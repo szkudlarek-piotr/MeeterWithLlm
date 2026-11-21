@@ -10,6 +10,7 @@ import org.example.meeter.interactions.*;
 import org.example.meeter.news.NewsController;
 import org.example.meeter.quote.QuoteModels;
 import org.example.meeter.quote.game.*;
+import org.example.meeter.superpowers.SuperpowerController;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -35,7 +36,7 @@ public class UuidResponse implements ResponseBodyAdvice<Object> {
         Map.entry(ApiModels.PublicQuoteView.class, Kind.QUOTE), Map.entry(QuoteModels.View.class, Kind.QUOTE),
         Map.entry(QuoteModels.RankedView.class, Kind.QUOTE), Map.entry(QuoteGameModels.Summary.class, Kind.GAME),
         Map.entry(CurrentAccount.Principal.class, Kind.USER), Map.entry(AdminUsers.Created.class, Kind.USER),
-        Map.entry(NewsController.Item.class, Kind.NEWS)
+        Map.entry(NewsController.Item.class, Kind.NEWS), Map.entry(SuperpowerController.View.class, Kind.SUPERPOWER)
     );
     private static final Pattern PHOTO = Pattern.compile("^/api/(people(?:/(?:browse|participants))?|events|cliques)/(\\d+)(/photo)(.*)$");
 

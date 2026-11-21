@@ -25,6 +25,9 @@ class FlywayMigrationTests {
         Files.copy(migrations.resolve("V11__jwt_invitations_and_people_creators.sql"),location.resolve("V11__jwt_invitations_and_people_creators.sql"));
         Files.copy(migrations.resolve("V12__registration_email_verification.sql"),location.resolve("V12__registration_email_verification.sql"));
         Files.copy(migrations.resolve("V13__account_invitation_history.sql"),location.resolve("V13__account_invitation_history.sql"));
+        Files.copy(migrations.resolve("V14__superpowers.sql"),location.resolve("V14__superpowers.sql"));
+        Files.copy(migrations.resolve("V15__superpower_metadata.sql"),location.resolve("V15__superpower_metadata.sql"));
+        Files.copy(migrations.resolve("V16__human_superpowers.sql"),location.resolve("V16__human_superpowers.sql"));
         String url="jdbc:h2:mem:flyway-"+UUID.randomUUID()+";MODE=MariaDB;DB_CLOSE_DELAY=-1";
         // First populate the old schema, then verify V8 preserves existing records.
         var previous=Flyway.configure().dataSource(url,"sa","").locations("filesystem:"+location).target("7").cleanDisabled(true).load();
@@ -39,7 +42,7 @@ class FlywayMigrationTests {
             statement.executeUpdate("insert into auth_events (occurred_at, username, event_type, ip_address) values (current_timestamp, 'fixture', 'LOGIN_FAILURE', '127.0.0.1')");
         }
         var flyway=Flyway.configure().dataSource(url,"sa","").locations("filesystem:"+location).cleanDisabled(true).load();
-        assertEquals(6,flyway.migrate().migrationsExecuted);
+        assertEquals(9,flyway.migrate().migrationsExecuted);
         String oldUuid;
         try(var connection=DriverManager.getConnection(url,"sa","");var statement=connection.createStatement()) {
             for(String table:new String[]{"places","cliques","app_news"}) {
@@ -48,6 +51,10 @@ class FlywayMigrationTests {
             }
             var rows=statement.executeQuery("select uuid from places where name='Preserved'");
             assertTrue(rows.next()); oldUuid=rows.getString(1); assertNotNull(UUID.fromString(oldUuid));
+            var superpowerRows=statement.executeQuery("select count(*) from superpowers");
+            assertTrue(superpowerRows.next()); assertEquals(0,superpowerRows.getInt(1));
+            var linkRows=statement.executeQuery("select count(*) from human_superpower");
+            assertTrue(linkRows.next()); assertEquals(0,linkRows.getInt(1));
         }
         assertEquals(0,flyway.migrate().migrationsExecuted);
         flyway.validate();

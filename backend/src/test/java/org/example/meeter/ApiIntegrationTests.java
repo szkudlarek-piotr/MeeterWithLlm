@@ -16,6 +16,7 @@ import org.example.meeter.auth.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.example.meeter.interactions.InteractionRepository;
+import org.example.meeter.superpowers.Superpower;
 import tools.jackson.databind.json.JsonMapper;
 import org.example.meeter.photos.*;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -50,6 +51,8 @@ class ApiIntegrationTests {
     @Autowired TokenRepository tokens;
     @Autowired AuthEventRepository authEvents;
     @Autowired org.example.meeter.news.NewsRepository news;
+    @Autowired org.example.meeter.superpowers.SuperpowerRepository superpowers;
+    @Autowired org.example.meeter.superpowers.HumanSuperpowerRepository humanSuperpower;
     @Autowired PasswordEncoder encoder;
     @Autowired JdbcTemplate jdbc;
     @Autowired InteractionRepository interactions;
@@ -144,6 +147,8 @@ class ApiIntegrationTests {
         jdbc.update("delete from account_invitation_history");
         jdbc.update("delete from pending_registrations");
         Files.deleteIfExists(CREDENTIAL_FILE);
+        humanSuperpower.deleteAll();
+        superpowers.deleteAll();
         news.deleteAll();
         quoteGames.deleteAll();
         quotes.deleteAll();
@@ -800,6 +805,7 @@ class ApiIntegrationTests {
             assertEquals("Dom profilu",profile.get("person").get("home").get("name").asString());
             assertEquals("Stolica kliki",profile.get("person").get("clique").get("cliqueCapital").get("name").asString());
             assertTrue(profile.get("canEditPhoto").asBoolean());
+            assertTrue(profile.get("canEditSuperpowers").asBoolean());
         }
         assertEquals(200,request("GET","/auth/me",null).statusCode());
     }
@@ -825,6 +831,86 @@ class ApiIntegrationTests {
         assertEquals(404,request("GET","/places/category-icons/initial-login.txt",null).statusCode());
         var anonymous=HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/places/category-icons/cafe.png")).GET().build(),HttpResponse.BodyHandlers.discarding());
         assertEquals(401,anonymous.statusCode());
+    }
+
+    @Test void superpowerDictionaryStoresCreatorTimeAndUuidContract() throws Exception {
+        var created=request("POST","/v2/superpowers","{\"superpowerName\":\"  Latanie  \"}");
+        assertEquals(201,created.statusCode(),created.body());
+        var body=json.readTree(created.body());
+        UUID uuid=UUID.fromString(body.get("id").asString());
+        assertEquals("Latanie",body.get("superpowerName").asString());
+        assertEquals(owner.getId(),jdbc.queryForObject("select added_by_id from superpowers where uuid = ?",Long.class,uuid));
+        assertEquals(1,jdbc.queryForObject("select count(*) from superpowers where uuid = ? and add_time is not null and superpower_photo_id is null",Integer.class,uuid).intValue());
+        assertEquals(400,request("POST","/v2/superpowers","{\"superpowerName\":\"   \"}").statusCode());
+        var single=request("GET","/v2/superpowers/"+uuid,null);
+        assertEquals(200,single.statusCode(),single.body());
+        assertEquals(uuid.toString(),json.readTree(single.body()).get("id").asString());
+        var listed=request("GET","/v2/superpowers",null);
+        assertEquals(200,listed.statusCode(),listed.body());
+        assertTrue(listed.body().contains("Latanie"));
+        assertEquals(404,request("GET","/v2/superpowers/"+UUID.randomUUID(),null).statusCode());
+    }
+
+    @Test void humanSuperpowerLinksRequireOwnedHumansAndUseUuidContract() throws Exception {
+        var human=people.save(new Human("Supermoc", "Test",null,null,null,null,null,null));
+        human.assignOwner(owner); people.save(human);
+        var foreign=people.save(new Human("Obcy", "Test",null,null,null,null,null,null));
+        var superpower=superpowers.save(new Superpower("Latanie", owner));
+        var empty=request("GET","/v2/people/"+human.getUuid()+"/superpowers",null);
+        assertEquals(200,empty.statusCode(),empty.body());
+        assertTrue(empty.body().contains("[]"));
+        assertEquals(404,request("POST","/people/"+foreign.getId()+"/superpowers","{\"superpowerId\":"+superpower.getId()+"}").statusCode());
+        assertEquals(404,request("POST","/people/"+human.getId()+"/superpowers","{\"superpowerId\":999999}").statusCode());
+        var created=request("POST","/v2/people/"+human.getUuid()+"/superpowers","{\"superpowerId\":\""+superpower.getUuid()+"\"}");
+        assertEquals(201,created.statusCode(),created.body());
+        assertEquals(superpower.getUuid().toString(),json.readTree(created.body()).get("superpowerId").asString());
+        assertEquals(owner.getId(),jdbc.queryForObject("select added_by_id from human_superpower where human_id = ?",Long.class,human.getId()));
+        assertEquals(1,jdbc.queryForObject("select count(*) from human_superpower where add_time is not null",Integer.class).intValue());
+        assertEquals(201,request("POST","/v2/people/"+human.getUuid()+"/superpowers","{\"superpowerId\":\""+superpower.getUuid()+"\"}").statusCode());
+        var listed=request("GET","/v2/people/"+human.getUuid()+"/superpowers",null);
+        assertEquals(200,listed.statusCode(),listed.body());
+        assertTrue(listed.body().contains("Latanie"));
+        var deleted=client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/v2/people/"+human.getUuid()+"/superpowers/"+superpower.getUuid())).header("X-XSRF-TOKEN",csrf).DELETE().build(),HttpResponse.BodyHandlers.ofString());
+        assertEquals(204,deleted.statusCode(),deleted.body());
+        var missing=client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/people/"+human.getId()+"/superpowers/"+superpower.getId())).header("X-XSRF-TOKEN",csrf).DELETE().build(),HttpResponse.BodyHandlers.ofString());
+        assertEquals(404,missing.statusCode(),missing.body());
+    }
+
+    @Test void superpowerLinksAllowAdminSelfCreatorAndSpouse() throws Exception {
+        var superpower=superpowers.save(new Superpower("Zwinność",owner));
+        var stranger=people.save(new Human("Obcy","Świadek",null,null,null,null,null,null));
+        var spouse=people.save(new Human("Małżonek","Test",null,null,null,null,null,null));
+        var spouseUser=users.save(new User("super-spouse",encoder.encode("spouse-password-1234"),spouse));
+        spouse.assignOwner(spouseUser); people.save(spouse);
+        var self=people.save(new Human("Sama","Sobie",null,null,null,null,null,null));
+        var selfUser=users.save(new User("super-self",encoder.encode("self-password-1234"),self));
+        self.assignOwner(selfUser); people.save(self);
+        interactions.save(new org.example.meeter.interactions.Wedding("Ślub świadka",null,
+            java.time.LocalDateTime.now(),java.util.Set.of(),stranger,spouse,null,null,null,false));
+        String link="{\"superpowerId\":"+superpower.getId()+"}";
+        String path="/people/"+stranger.getId()+"/superpowers";
+        // The stranger has no creator: an unrelated account gets no access yet.
+        assertEquals(404,request("POST",path,link).statusCode());
+        // The spouse of the person may list, add and remove.
+        assertEquals(200,request("POST","/auth/login","{\"username\":\"super-spouse\",\"password\":\"spouse-password-1234\"}").statusCode());
+        assertEquals(200,request("GET",path,null).statusCode());
+        assertEquals(201,request("POST",path,link).statusCode());
+        assertTrue(json.readTree(request("GET","/people/browse/"+stranger.getId(),null).body()).get("canEditSuperpowers").asBoolean());
+        var removed=client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api"+path+"/"+superpower.getId()))
+            .header("X-XSRF-TOKEN",csrf).DELETE().build(),HttpResponse.BodyHandlers.ofString());
+        assertEquals(204,removed.statusCode(),removed.body());
+        // The person themselves manages their own record, but not a stranger's.
+        assertEquals(200,request("POST","/auth/login","{\"username\":\"super-self\",\"password\":\"self-password-1234\"}").statusCode());
+        assertEquals(201,request("POST","/people/"+self.getId()+"/superpowers",link).statusCode());
+        assertTrue(json.readTree(request("GET","/people/browse/"+self.getId(),null).body()).get("canEditSuperpowers").asBoolean());
+        assertEquals(404,request("POST",path,link).statusCode());
+        // An administrator manages every person's superpowers.
+        assertEquals(200,request("POST","/auth/login","{\"username\":\""+username+"\",\"password\":\"test-password-123456\"}").statusCode());
+        assertEquals(404,request("POST",path,link).statusCode());
+        owner.grantRole(Role.ROLE_ADMIN); users.save(owner);
+        assertEquals(201,request("POST",path,link).statusCode());
+        assertEquals(200,request("GET",path,null).statusCode());
+        assertTrue(json.readTree(request("GET","/people/browse/"+stranger.getId(),null).body()).get("canEditSuperpowers").asBoolean());
     }
 
     @Test void profileAllowsCreatorToAddParticipantsToMeetingsEventsAndTrips() throws Exception {
@@ -917,8 +1003,11 @@ class ApiIntegrationTests {
         String foreignPath="/people/"+foreign.getId()+"/photo";
         assertEquals(404,request("POST",foreignPath,body).statusCode());
         assertFalse(json.readTree(request("GET","/people/browse/"+foreign.getId(),null).body()).get("canEditPhoto").asBoolean());
+        assertFalse(json.readTree(request("GET","/people/browse/"+foreign.getId(),null).body()).get("canEditSuperpowers").asBoolean());
         owner.grantRole(Role.ROLE_ADMIN); users.save(owner);
         assertTrue(json.readTree(request("GET","/people/browse/"+foreign.getId(),null).body()).get("canEditPhoto").asBoolean());
+        // Admins also manage superpowers, unlike photo ownership for unrelated records.
+        assertTrue(json.readTree(request("GET","/people/browse/"+foreign.getId(),null).body()).get("canEditSuperpowers").asBoolean());
         var adminPhoto=request("POST",foreignPath,body); assertEquals(200,adminPhoto.statusCode(),adminPhoto.body());
         String browsePhoto=json.readTree(adminPhoto.body()).get("profilePhotoUrl").asString();
         assertTrue(browsePhoto.startsWith("/api/people/browse/"));

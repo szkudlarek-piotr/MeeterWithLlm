@@ -122,7 +122,12 @@ public class PeopleRanking {
                     publicQuotes.put(rs.getLong("author_id"),new ApiModels.PublicQuoteView(rs.getLong("id"),rs.getString("quote_text")));
                 });
         }
-        var content=rows.stream().map(row->new ApiModels.PersonBrowseView(ApiModels.HumanView.forBrowse(byId.get(row.id())),row.visits(),publicQuotes.get(row.id()))).toList();
+        Long viewerId=account.id();
+        var content=rows.stream().map(row->{
+            var human=byId.get(row.id());
+            return new ApiModels.PersonBrowseView(ApiModels.HumanView.forBrowse(human),row.visits(),
+                publicQuotes.get(row.id()),ApiModels.CliqueIcon.forViewer(human.getClique(),viewerId));
+        }).toList();
         return new ApiModels.PeoplePage(content,page,size,total,(long)page*size+size<total);
     }
 }
