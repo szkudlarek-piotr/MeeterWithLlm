@@ -19,6 +19,12 @@ public class SuperpowerPhotoStorage {
         this.images = new EventPhotoStorage(directory);
     }
 
+    public Path path(String name) {
+        Path path = images.path(name);
+        if (!Files.isRegularFile(path)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Nie znaleziono zdjęcia.");
+        return path;
+    }
+
     public String storeAs(byte[] bytes, String name) {
         String temporary = images.store(bytes);
         Path source = images.path(temporary);

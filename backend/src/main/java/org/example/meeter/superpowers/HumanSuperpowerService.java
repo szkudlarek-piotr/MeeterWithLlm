@@ -31,9 +31,9 @@ public class HumanSuperpowerService {
         this.account = account;
     }
 
-    public record View(Long superpowerId, String superpowerName, LocalDateTime addTime) {
+    public record View(Long superpowerId, String superpowerName, String photoUrl, LocalDateTime addTime) {
         static View of(HumanSuperpower link) {
-            return new View(link.getSuperpower().getId(), link.getSuperpower().getSuperpowerName(), link.getAddTime());
+            return new View(link.getSuperpower().getId(), link.getSuperpower().getSuperpowerName(), link.getSuperpower().photoUrl(), link.getAddTime());
         }
     }
 

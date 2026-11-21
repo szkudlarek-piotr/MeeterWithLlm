@@ -173,7 +173,7 @@ export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly,
         {superpowerError && <p className="field-error" role="alert">{superpowerError}</p>}
         {superpowers.length ? <ul className="superpower-list">
           {superpowers.map(item => <li key={item.superpowerId}>
-            <span>{item.superpowerName}</span>
+            {item.photoUrl && <img src={item.photoUrl} alt="" width="40" height="40" loading="lazy" style={{ borderRadius: 6, objectFit: 'cover' }} />}<span>{item.superpowerName}</span>
             <button type="button" className="text-button" disabled={superpowerBusy} onClick={() => removeSuperpower(item.superpowerId)}>Usuń</button>
           </li>)}
         </ul> : <p className="field-hint">Brak przypisanych supermocy.</p>}
