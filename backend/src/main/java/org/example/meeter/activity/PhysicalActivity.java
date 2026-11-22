@@ -27,9 +27,6 @@ public class PhysicalActivity extends OwnedEntity {
     @Column(name = "activity_date", nullable = false)
     private LocalDate activityDate;
 
-    @Column(name = "duration_minutes", nullable = false)
-    private int durationMinutes;
-
     @Column(length = 1000)
     private String description;
 
@@ -37,14 +34,13 @@ public class PhysicalActivity extends OwnedEntity {
     @Column(name = "add_time", nullable = false, updatable = false)
     private LocalDateTime addTime;
 
-    public PhysicalActivity(ActivityType type, LocalDate date, int durationMinutes, String description) {
-        update(type, date, durationMinutes, description);
+    public PhysicalActivity(ActivityType type, LocalDate date, String description) {
+        update(type, date, description);
     }
 
-    public void update(ActivityType type, LocalDate date, int durationMinutes, String description) {
+    public void update(ActivityType type, LocalDate date, String description) {
         this.activityType = type;
         this.activityDate = date;
-        this.durationMinutes = durationMinutes;
         this.description = description;
     }
 }

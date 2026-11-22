@@ -33,32 +33,31 @@ public class PhysicalActivityService {
         LocalDate today = LocalDate.now(ZONE);
         LocalDate monday = today.with(DayOfWeek.MONDAY);
         List<PhysicalActivity> all = activities.findByCreatedByIdOrderByActivityDateDescIdDesc(account.id());
-        int weekCount = 0, weekMinutes = 0;
+        int weekCount = 0;
         Set<LocalDate> days = new HashSet<>();
         for (PhysicalActivity activity : all) {
             LocalDate date = activity.getActivityDate();
             days.add(date);
             if (!date.isBefore(monday) && !date.isAfter(today)) {
                 weekCount++;
-                weekMinutes += activity.getDurationMinutes();
             }
         }
         // The streak may still count yesterday if nothing has been logged yet today.
         LocalDate day = days.contains(today) ? today : today.minusDays(1);
         int streak = 0;
         while (days.contains(day)) { streak++; day = day.minusDays(1); }
-        return new Summary(weekCount, weekMinutes, streak);
+        return new Summary(weekCount, streak);
     }
 
     @Transactional public View create(Input input) {
-        var activity = new PhysicalActivity(input.type(), validDate(input.date()), input.durationMinutes(), clean(input.description()));
+        var activity = new PhysicalActivity(input.type(), validDate(input.date()), clean(input.description()));
         activity.assignOwner(users.getReferenceById(account.id()));
         return View.of(activities.saveAndFlush(activity));
     }
 
     @Transactional public View update(Long id, Input input) {
         var activity = owned(id);
-        activity.update(input.type(), validDate(input.date()), input.durationMinutes(), clean(input.description()));
+        activity.update(input.type(), validDate(input.date()), clean(input.description()));
         return View.of(activities.saveAndFlush(activity));
     }
 
