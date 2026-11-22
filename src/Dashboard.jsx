@@ -14,6 +14,7 @@ import MyQuotesPanel from './MyQuotesPanel.jsx'
 import { t, tf } from './i18n.js'
 import AdminPanel from './AdminPanel.jsx'
 import NewsPanel from './NewsPanel.jsx'
+import PhysicalActivityPanel from './PhysicalActivityPanel.jsx'
 
 const interactionCategory = ['Interakcje', t('Dodaj interakcję'), '☕', t('Typ interakcji')]
 
@@ -179,6 +180,7 @@ export default function Dashboard({ email, actorId, roles = [], profileVersion, 
             <button className={`nav-item ${view === 'people' ? 'active' : ''}`} onClick={() => setView('people')}><span>◎</span> {t('Ludzie')}</button>
             <button className={`nav-item ${view === 'cliques' ? 'active' : ''}`} onClick={() => setView('cliques')}><span>◌</span> {t('Kliki')}</button>
             <button className={`nav-item ${view === 'my-quotes' ? 'active' : ''}`} onClick={() => setView('my-quotes')}><span>✎</span> {t('myQuotes.title')}</button>
+            <button className={`nav-item ${view === 'activity' ? 'active' : ''}`} onClick={() => setView('activity')}><span>♥</span> {t('Aktywność')}</button>
             {roles.includes('ROLE_ADMIN') && <button className={`nav-item ${view === 'admin' ? 'active' : ''}`} onClick={() => setView('admin')}><span>⚙</span> {t('Administracja')}</button>}
             <button className={`nav-item ${view === 'feed' ? 'active' : ''}`} onClick={() => setView('feed')}><span>▦</span> {t('Aktualności')}</button>
             <button className={`nav-item ${view === 'calendar' ? 'active' : ''}`} onClick={() => setView('calendar')}><span>▤</span> {t('Kalendarz')}</button>
@@ -201,7 +203,7 @@ export default function Dashboard({ email, actorId, roles = [], profileVersion, 
           </SearchArea>
           <div className="page-heading"><div><p className="eyebrow">{t('TWÓJ MAŁY WIELKI ŚWIAT')}</p><h2>{view === 'my-quotes' ? t('myQuotes.title') : view === 'admin' ? t('Administracja.') : view === 'cliques' ? t('Twoje kliki.') : view === 'people' ? t('Twoi ludzie.') : view === 'feed' ? t('Co nowego w Meeterze?') : view === 'single-game' ? t('KTO ETA SKAZAŁ') : view === 'game' ? t('Kto to powiedział?') : t('Czas na wspólne chwile.')}</h2><p>{view === 'my-quotes' ? t('myQuotes.intro') : view === 'admin' ? t('Narzędzia do zarządzania danymi Meetera.') : view === 'cliques' ? t('Ludzie, których łączą wspólne historie.') : view === 'people' ? t('Przeglądaj znajomych i wspólne wizyty.') : view === 'feed' ? t('Nowe funkcje, poprawki i usprawnienia w jednym miejscu.') : view === 'single-game' ? t('Jeden cytat. Wszyscy ludzie. Kto jest autorem?') : view === 'game' ? t('Zgadnij autora. Sprawdź, jak dobrze znasz swoich ludzi.') : t('Twoje spotkania, wizyty, eventy i podróże w jednym miejscu.')}</p></div><span className="demo-badge">{t('Twój Meeter')}</span></div>
 
-          {view === 'admin' && roles.includes('ROLE_ADMIN') ? <AdminPanel onImported={() => setCalendarVersion(value => value + 1)} /> : view === 'cliques' ? <CliquesPanel publicQuotesOnly={publicQuotesOnly} onTogglePublicQuotes={onTogglePublicQuotes} version={cliques.length + people.length + calendarVersion} onAdd={() => openForm(categories[7])} /> : view === 'people' ? <PeoplePanel publicQuotesOnly={publicQuotesOnly} onTogglePublicQuotes={onTogglePublicQuotes} version={people.length + calendarVersion} onAdd={() => openForm(categories[0])} /> : view === 'single-game' ? <QuoteGamePanel key="single" single /> : view === 'game' ? <QuoteGamePanel key="classic" /> : view === 'feed' ? <NewsPanel /> : view === 'my-quotes' ? <MyQuotesPanel /> : <>
+          {view === 'admin' && roles.includes('ROLE_ADMIN') ? <AdminPanel onImported={() => setCalendarVersion(value => value + 1)} /> : view === 'cliques' ? <CliquesPanel publicQuotesOnly={publicQuotesOnly} onTogglePublicQuotes={onTogglePublicQuotes} version={cliques.length + people.length + calendarVersion} onAdd={() => openForm(categories[7])} /> : view === 'people' ? <PeoplePanel publicQuotesOnly={publicQuotesOnly} onTogglePublicQuotes={onTogglePublicQuotes} version={people.length + calendarVersion} onAdd={() => openForm(categories[0])} /> : view === 'single-game' ? <QuoteGamePanel key="single" single /> : view === 'game' ? <QuoteGamePanel key="classic" /> : view === 'feed' ? <NewsPanel /> : view === 'my-quotes' ? <MyQuotesPanel /> : view === 'activity' ? <PhysicalActivityPanel /> : <>
             <CalendarPanel month={month} entries={calendarEntries} selectedDate={selectedDate} actorId={actorId} onSelect={setSelectedDate} onMonthChange={next => { setMonth(next); setSelectedDate('') }} loading={calendarLoading} error={calendarError} retry={() => setCalendarVersion(current => current + 1)} onAdd={() => openForm(interactionCategory)} onInteractionChange={updateInteraction} />
           </>}
         </DashboardMain>
