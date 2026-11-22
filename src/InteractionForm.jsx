@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import { t } from './i18n.js'
 import EntityPicker from './EntityPicker.jsx'
 import EventPhotoPicker from './EventPhotoPicker.jsx'
 import ParticipantRecommendations from './ParticipantRecommendations.jsx'
@@ -29,6 +30,18 @@ export function interactionEntry(item) {
 function localToday() {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
+export function InteractionAddForm({ initialDate, actorId, onSave }) {
+  const [kind, setKind] = useState('Spotkania')
+  const selectId = useId()
+  return <>
+    <label htmlFor={selectId}>{t('calendar.addLabel')}</label>
+    <select id={selectId} value={kind} onChange={event => setKind(event.target.value)}>
+      {Object.entries(interactionTypes).map(([category, config]) => <option key={category} value={category}>{t('calendar.type.' + config.type)}</option>)}
+    </select>
+    <InteractionForm key={kind} category={kind} initialDate={initialDate} actorId={actorId} onSave={onSave} />
+  </>
 }
 
 export default function InteractionForm({ category, initialDate, actorId, onSave, initialInteraction }) {

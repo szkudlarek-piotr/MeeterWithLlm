@@ -4,7 +4,7 @@ import { api } from './api.js'
 import HumanForm from './HumanForm.jsx'
 import CalendarPanel, { PersonAvatar } from './CalendarPanel.jsx'
 import { CliqueForm, PlaceForm } from './EntityForms.jsx'
-import InteractionForm, { interactionEntry, interactionTypes } from './InteractionForm.jsx'
+import InteractionForm, { InteractionAddForm, interactionEntry, interactionTypes } from './InteractionForm.jsx'
 import QuoteForm from './QuoteForm.jsx'
 import SuperpowerForm from './SuperpowerForm.jsx'
 import QuoteGamePanel from './QuoteGamePanel.jsx'
@@ -14,6 +14,8 @@ import MyQuotesPanel from './MyQuotesPanel.jsx'
 import { t } from './i18n.js'
 import AdminPanel from './AdminPanel.jsx'
 import NewsPanel from './NewsPanel.jsx'
+
+const interactionCategory = ['Interakcje', 'Dodaj interakcję', '☕', 'Typ interakcji']
 
 const categories = [
   ['Ludzie', 'Dodaj osobę', '◎', 'Imię i nazwisko'],
@@ -200,13 +202,13 @@ export default function Dashboard({ email, actorId, roles = [], profileVersion, 
           <div className="page-heading"><div><p className="eyebrow">TWÓJ MAŁY WIELKI ŚWIAT</p><h2>{view === 'my-quotes' ? t('myQuotes.title') : view === 'admin' ? 'Administracja.' : view === 'cliques' ? 'Twoje kliki.' : view === 'people' ? 'Twoi ludzie.' : view === 'feed' ? 'Co nowego w Meeterze?' : view === 'single-game' ? 'KTO ETA SKAZAŁ' : view === 'game' ? 'Kto to powiedział?' : 'Czas na wspólne chwile.'}</h2><p>{view === 'my-quotes' ? t('myQuotes.intro') : view === 'admin' ? 'Narzędzia do zarządzania danymi Meetera.' : view === 'cliques' ? 'Ludzie, których łączą wspólne historie.' : view === 'people' ? 'Przeglądaj znajomych i wspólne wizyty.' : view === 'feed' ? 'Nowe funkcje, poprawki i usprawnienia w jednym miejscu.' : view === 'single-game' ? 'Jeden cytat. Wszyscy ludzie. Kto jest autorem?' : view === 'game' ? 'Zgadnij autora. Sprawdź, jak dobrze znasz swoich ludzi.' : 'Twoje spotkania, wizyty, eventy i podróże w jednym miejscu.'}</p></div><span className="demo-badge">Twój Meeter</span></div>
 
           {view === 'admin' && roles.includes('ROLE_ADMIN') ? <AdminPanel onImported={() => setCalendarVersion(value => value + 1)} /> : view === 'cliques' ? <CliquesPanel publicQuotesOnly={publicQuotesOnly} onTogglePublicQuotes={onTogglePublicQuotes} version={cliques.length + people.length + calendarVersion} onAdd={() => openForm(categories[7])} /> : view === 'people' ? <PeoplePanel publicQuotesOnly={publicQuotesOnly} onTogglePublicQuotes={onTogglePublicQuotes} version={people.length + calendarVersion} onAdd={() => openForm(categories[0])} /> : view === 'single-game' ? <QuoteGamePanel key="single" single /> : view === 'game' ? <QuoteGamePanel key="classic" /> : view === 'feed' ? <NewsPanel /> : view === 'my-quotes' ? <MyQuotesPanel /> : <>
-            <CalendarPanel month={month} entries={calendarEntries} selectedDate={selectedDate} actorId={actorId} onSelect={setSelectedDate} onMonthChange={next => { setMonth(next); setSelectedDate('') }} loading={calendarLoading} error={calendarError} retry={() => setCalendarVersion(current => current + 1)} onAdd={name => openForm(categories.find(([key]) => key === name))} onInteractionChange={updateInteraction} />
+            <CalendarPanel month={month} entries={calendarEntries} selectedDate={selectedDate} actorId={actorId} onSelect={setSelectedDate} onMonthChange={next => { setMonth(next); setSelectedDate('') }} loading={calendarLoading} error={calendarError} retry={() => setCalendarVersion(current => current + 1)} onAdd={() => openForm(interactionCategory)} onInteractionChange={updateInteraction} />
           </>}
         </DashboardMain>
 
       </div>
 
-      <dialog ref={formDialog} className="login-dialog" aria-labelledby="add-title"><button className="close-dialog" aria-label="Zamknij" onClick={() => formDialog.current.close()}>×</button><p className="eyebrow">NOWA HISTORIA</p><h2 id="add-title">{category[1]}</h2>{category[0] === 'Ludzie' ? <HumanForm key={formVersion} onSave={saveHuman} cliques={cliques} places={places} /> : category[0] === 'Kliki' ? <CliqueForm key={formVersion} places={places} onSave={saveClique} /> : category[0] === 'Miejsca' ? <PlaceForm key={formVersion} onSave={savePlace} /> : category[0] === 'Cytaty' ? <QuoteForm key={formVersion} onSave={saveQuote} /> : category[0] === 'Supermoce' ? <SuperpowerForm key={formVersion} onSave={saveSuperpower} /> : interactionTypes[category[0]] ? <InteractionForm key={formVersion} category={category[0]} actorId={actorId} initialDate={selectedDate} onSave={saveInteraction} /> : <form onSubmit={save}><label htmlFor="entry-name">{category[3]}</label><input id="entry-name" name="name" required maxLength={120} /><label htmlFor="entry-date">Data (opcjonalnie)</label><input key={selectedDate} id="entry-date" type="date" name="date" defaultValue={selectedDate} /><label htmlFor="entry-note">Notatka (opcjonalnie)</label><textarea id="entry-note" name="note" rows={3} maxLength={1000} /><p className="demo-note">Wpis zostanie dodany do wersji demo na czas tej sesji.</p><button className="primary submit">Zapisz</button></form>}</dialog>
+      <dialog ref={formDialog} className="login-dialog" aria-labelledby="add-title"><button className="close-dialog" aria-label="Zamknij" onClick={() => formDialog.current.close()}>×</button><p className="eyebrow">NOWA HISTORIA</p><h2 id="add-title">{category[1]}</h2>{category[0] === 'Ludzie' ? <HumanForm key={formVersion} onSave={saveHuman} cliques={cliques} places={places} /> : category[0] === 'Kliki' ? <CliqueForm key={formVersion} places={places} onSave={saveClique} /> : category[0] === 'Miejsca' ? <PlaceForm key={formVersion} onSave={savePlace} /> : category[0] === 'Cytaty' ? <QuoteForm key={formVersion} onSave={saveQuote} /> : category[0] === 'Supermoce' ? <SuperpowerForm key={formVersion} onSave={saveSuperpower} /> : category[0] === 'Interakcje' ? <InteractionAddForm key={formVersion} initialDate={selectedDate} actorId={actorId} onSave={saveInteraction} /> : interactionTypes[category[0]] ? <InteractionForm key={formVersion} category={category[0]} actorId={actorId} initialDate={selectedDate} onSave={saveInteraction} /> : <form onSubmit={save}><label htmlFor="entry-name">{category[3]}</label><input id="entry-name" name="name" required maxLength={120} /><label htmlFor="entry-date">Data (opcjonalnie)</label><input key={selectedDate} id="entry-date" type="date" name="date" defaultValue={selectedDate} /><label htmlFor="entry-note">Notatka (opcjonalnie)</label><textarea id="entry-note" name="note" rows={3} maxLength={1000} /><p className="demo-note">Wpis zostanie dodany do wersji demo na czas tej sesji.</p><button className="primary submit">Zapisz</button></form>}</dialog>
     </>
   )
 }
