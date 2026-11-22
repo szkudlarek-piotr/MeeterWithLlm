@@ -44,6 +44,7 @@ export default css`
 .calendar-day-dialog .day-panel-heading { padding-right: 30px; margin-bottom: 20px; }
 .calendar-day-dialog h2 { font-size: clamp(21px, 4vw, 28px); margin: 8px 0; }
 .calendar-day-dialog .memory-detail { margin-top: 20px; }
+.calendar-add-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 8px; }
 .participant-editor { margin: 20px 0; }
 .participant-editor fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .participant-editor legend { font-size: 12px; font-weight: 700; }

@@ -3,7 +3,8 @@ import { api } from './api.js'
 import EntityPicker from './EntityPicker.jsx'
 import TripMap from './TripMap.jsx'
 import InteractionEditDialog from './InteractionEditDialog.jsx'
-import { interactionEntry } from './InteractionForm.jsx'
+import { interactionEntry, interactionTypes } from './InteractionForm.jsx'
+import { t } from './i18n.js'
 import PersonAvatar from './PersonAvatar.jsx'
 export { default as PersonAvatar } from './PersonAvatar.jsx'
 
@@ -73,9 +74,9 @@ export default function CalendarPanel({ month, entries, selectedDate, onSelect, 
     onSelect(date)
     if (!dayDialog.current.open) dayDialog.current.showModal()
   }
-  function addMeeting() {
+  function addInteraction(category) {
     dayDialog.current.close()
-    onAdd()
+    onAdd(category)
   }
   const startOffset = (new Date(month.getFullYear(), month.getMonth(), 1).getDay() + 6) % 7
   const numberOfDays = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()
@@ -122,7 +123,7 @@ export default function CalendarPanel({ month, entries, selectedDate, onSelect, 
     }}>
       <button type="button" className="close-dialog" aria-label="Zamknij szczegóły dnia" onClick={() => dayDialog.current.close()} autoFocus>×</button>
       <div className="day-panel-heading"><div><p className="eyebrow">JEDEN DZIEŃ, WIELE HISTORII</p><h2 id="calendar-day-title">{selectedDate ? fullDate(selectedDate) : 'Wybierz dzień'}</h2></div></div>
-      {selectedDate && <button className="primary" onClick={addMeeting}>+ Dodaj spotkanie</button>}
+      {selectedDate && <div className="calendar-add-actions" role="group" aria-label={t('calendar.addLabel')}>{Object.entries(interactionTypes).map(([category, config]) => <button key={category} type="button" className={config.type === 'MEETING' ? 'primary' : 'text-button'} onClick={() => addInteraction(category)}><span aria-hidden="true">{config.icon}</span> {t('calendar.add')} {t(`calendar.type.${config.type}`).toLowerCase()}</button>)}</div>}
       {editNotice && <p className="participant-notice" role="status">{editNotice}</p>}
       {loading && <p role="status" className="calendar-empty-hint">Wczytywanie interakcji…</p>}
       {error && <p className="field-error" role="alert">{error} <button className="text-button" onClick={retry}>Spróbuj ponownie</button></p>}
