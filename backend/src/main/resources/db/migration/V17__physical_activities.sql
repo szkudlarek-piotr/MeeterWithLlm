@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS physical_activities (
     uuid UUID NOT NULL DEFAULT UUID(),
     activity_type VARCHAR(32) NOT NULL,
     activity_date DATE NOT NULL,
+    duration_minutes INT NOT NULL,
     description VARCHAR(1000) NULL,
     created_by_id BIGINT NOT NULL,
     add_time DATETIME(6) NOT NULL
