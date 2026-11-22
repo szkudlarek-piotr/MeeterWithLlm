@@ -18,6 +18,9 @@ public class PhysicalActivityController {
     @GetMapping
     public List<View> list() { return service.list(); }
 
+    @GetMapping("/categories")
+    public List<String> categories() { return service.categories(); }
+
     @GetMapping("/summary")
     public Summary summary() { return service.summary(); }
 

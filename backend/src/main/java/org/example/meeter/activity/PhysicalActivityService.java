@@ -29,6 +29,10 @@ public class PhysicalActivityService {
         return activities.findByCreatedByIdOrderByActivityDateDescIdDesc(account.id()).stream().map(View::of).toList();
     }
 
+    public List<String> categories() {
+        return activities.findCategories(account.id());
+    }
+
     public Summary summary() {
         LocalDate today = LocalDate.now(ZONE);
         LocalDate monday = today.with(DayOfWeek.MONDAY);
@@ -50,14 +54,14 @@ public class PhysicalActivityService {
     }
 
     @Transactional public View create(Input input) {
-        var activity = new PhysicalActivity(input.type(), validDate(input.date()), clean(input.description()));
+        var activity = new PhysicalActivity(category(input.category()), validDate(input.date()), clean(input.description()));
         activity.assignOwner(users.getReferenceById(account.id()));
         return View.of(activities.saveAndFlush(activity));
     }
 
     @Transactional public View update(Long id, Input input) {
         var activity = owned(id);
-        activity.update(input.type(), validDate(input.date()), clean(input.description()));
+        activity.update(category(input.category()), validDate(input.date()), clean(input.description()));
         return View.of(activities.saveAndFlush(activity));
     }
 
@@ -74,6 +78,13 @@ public class PhysicalActivityService {
         if (date.isAfter(LocalDate.now(ZONE)))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Data aktywności nie może być z przyszłości.");
         return date;
+    }
+
+    private static String category(String raw) {
+        String name = raw == null ? "" : raw.strip().replaceAll("\\s+", " ");
+        if (name.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Podaj kategorię aktywności.");
+        if (name.length() > 64) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Kategoria może mieć najwyżej 64 znaki.");
+        return name;
     }
 
     private static String clean(String description) {

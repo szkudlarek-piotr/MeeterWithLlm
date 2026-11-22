@@ -12,17 +12,15 @@ import org.hibernate.annotations.CurrentTimestamp;
 @Table(name = "physical_activities", indexes = @Index(name = "idx_physical_activity_owner_date", columnList = "created_by_id,activity_date"))
 @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PhysicalActivity extends OwnedEntity {
-    public enum ActivityType { RUN, WALK, BIKE, GYM, SWIM, OTHER }
-
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false, unique = true, updatable = false)
     private UUID uuid = UUID.randomUUID();
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "activity_type", nullable = false, length = 32)
-    private ActivityType activityType;
+    /** Free-text category chosen by the owner, e.g. "siłownia" or "joga". */
+    @Column(name = "activity_type", nullable = false, length = 64)
+    private String activityType;
 
     @Column(name = "activity_date", nullable = false)
     private LocalDate activityDate;
@@ -34,12 +32,12 @@ public class PhysicalActivity extends OwnedEntity {
     @Column(name = "add_time", nullable = false, updatable = false)
     private LocalDateTime addTime;
 
-    public PhysicalActivity(ActivityType type, LocalDate date, String description) {
-        update(type, date, description);
+    public PhysicalActivity(String category, LocalDate date, String description) {
+        update(category, date, description);
     }
 
-    public void update(ActivityType type, LocalDate date, String description) {
-        this.activityType = type;
+    public void update(String category, LocalDate date, String description) {
+        this.activityType = category;
         this.activityDate = date;
         this.description = description;
     }
