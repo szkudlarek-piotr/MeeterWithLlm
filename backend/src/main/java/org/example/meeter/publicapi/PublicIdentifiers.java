@@ -3,6 +3,7 @@ package org.example.meeter.publicapi;
 import jakarta.persistence.*;
 import java.util.*;
 import org.example.meeter.*;
+import org.example.meeter.activity.PhysicalActivity;
 import org.example.meeter.auth.User;
 import org.example.meeter.interactions.Interaction;
 import org.example.meeter.news.NewsEntry;
@@ -19,7 +20,7 @@ public class PublicIdentifiers {
     public enum Kind {
         HUMAN(Human.class), PLACE(Place.class), CLIQUE(Clique.class), INTERACTION(Interaction.class),
         QUOTE(Quote.class), GAME(QuoteGame.class), ROUND(GameRound.class), USER(User.class), NEWS(NewsEntry.class),
-        SUPERPOWER(Superpower.class);
+        SUPERPOWER(Superpower.class), ACTIVITY(PhysicalActivity.class);
         final Class<?> entity;
         Kind(Class<?> entity) { this.entity = entity; }
     }

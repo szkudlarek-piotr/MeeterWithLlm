@@ -38,6 +38,7 @@ public class UuidPathVariables implements WebMvcConfigurer {
         if (path.startsWith("/api/cliques/")) return Kind.CLIQUE;
         if (path.startsWith("/api/quotes/")) return Kind.QUOTE;
         if (path.startsWith("/api/superpowers/")) return Kind.SUPERPOWER;
+        if (path.startsWith("/api/physical-activities/")) return Kind.ACTIVITY;
         if (path.startsWith("/api/quote-games/")) return Kind.GAME;
         if (path.matches("/api/(interactions|meetings|visits|events|trips|flatmates|weddings)/.*")) return Kind.INTERACTION;
         return null;

@@ -36,7 +36,8 @@ public class UuidResponse implements ResponseBodyAdvice<Object> {
         Map.entry(ApiModels.PublicQuoteView.class, Kind.QUOTE), Map.entry(QuoteModels.View.class, Kind.QUOTE),
         Map.entry(QuoteModels.RankedView.class, Kind.QUOTE), Map.entry(QuoteGameModels.Summary.class, Kind.GAME),
         Map.entry(CurrentAccount.Principal.class, Kind.USER), Map.entry(AdminUsers.Created.class, Kind.USER),
-        Map.entry(NewsController.Item.class, Kind.NEWS), Map.entry(SuperpowerController.View.class, Kind.SUPERPOWER)
+        Map.entry(NewsController.Item.class, Kind.NEWS), Map.entry(SuperpowerController.View.class, Kind.SUPERPOWER),
+        Map.entry(org.example.meeter.activity.PhysicalActivityModels.View.class, Kind.ACTIVITY)
     );
     private static final Pattern PHOTO = Pattern.compile("^/api/(people(?:/(?:browse|participants))?|events|cliques|superpowers)/(\\d+)(/photo)(.*)$");
 
