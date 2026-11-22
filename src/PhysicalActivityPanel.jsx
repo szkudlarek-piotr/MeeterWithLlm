@@ -2,22 +2,14 @@ import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { t, dateLocale } from './i18n.js'
 
-const activityTypes = [
-  { value: 'RUN', label: 'Bieg' },
-  { value: 'WALK', label: 'Spacer' },
-  { value: 'BIKE', label: 'Rower' },
-  { value: 'GYM', label: 'Siłownia' },
-  { value: 'SWIM', label: 'Pływanie' },
-  { value: 'OTHER', label: 'Inne' },
-]
-const typeLabel = value => t((activityTypes.find(item => item.value === value) ?? activityTypes[5]).label)
 const todayIso = () => new Date().toLocaleDateString('sv-SE')
-const emptyForm = () => ({ type: 'GYM', date: todayIso(), description: '' })
+const emptyForm = () => ({ category: '', date: todayIso(), description: '' })
 const formatDate = iso => new Date(`${iso}T00:00:00`).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
 
 export default function PhysicalActivityPanel() {
   const [items, setItems] = useState([])
   const [summary, setSummary] = useState(null)
+  const [categories, setCategories] = useState([])
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -30,15 +22,16 @@ export default function PhysicalActivityPanel() {
     Promise.all([
       api('/physical-activities', { signal: controller.signal }),
       api('/physical-activities/summary', { signal: controller.signal }),
+      api('/physical-activities/categories', { signal: controller.signal }),
     ])
-      .then(([list, stats]) => { setItems(list); setSummary(stats); setLoadError('') })
+      .then(([list, stats, names]) => { setItems(list); setSummary(stats); setCategories(names); setLoadError('') })
       .catch(err => { if (!controller.signal.aborted) setLoadError(err.message) })
     return () => controller.abort()
   }, [reload])
 
   function edit(item) {
     setEditingId(item.id)
-    setForm({ type: item.type, date: item.date, description: item.description ?? '' })
+    setForm({ category: item.category, date: item.date, description: item.description ?? '' })
     setError('')
   }
 
@@ -50,7 +43,16 @@ export default function PhysicalActivityPanel() {
 
   async function submit(event) {
     event.preventDefault()
-    const body = { type: form.type, date: form.date, description: form.description.trim() || null }
+    const category = form.category.trim().replace(/\s+/g, ' ')
+    if (!category) {
+      setError(t('Podaj kategorię aktywności.'))
+      return
+    }
+    if (category.length > 64) {
+      setError(t('Kategoria może mieć najwyżej 64 znaki.'))
+      return
+    }
+    const body = { category, date: form.date, description: form.description.trim() || null }
     setBusy(true)
     setError('')
     try {
@@ -77,7 +79,7 @@ export default function PhysicalActivityPanel() {
     }
   }
 
-  return <section className="card physical-activity" style={{ maxWidth: 640, margin: '0 auto' }}>
+  return <section className="card physical-activity">
     <h3>{t('Aktywność fizyczna')}</h3>
     {loadError && <p className="field-error" role="alert">{loadError}</p>}
     {summary && <div className="activity-summary" aria-label={t('Podsumowanie aktywności')}>
@@ -88,10 +90,13 @@ export default function PhysicalActivityPanel() {
     <form className="card interaction-form" onSubmit={submit}>
       <h4>{editingId ? t('Edytuj wpis') : t('Dodaj aktywność')}</h4>
       <fieldset disabled={busy}>
-        <label htmlFor="activity-type">{t('Typ aktywności')}</label>
-        <select id="activity-type" value={form.type} onChange={event => setForm({ ...form, type: event.target.value })}>
-          {activityTypes.map(item => <option key={item.value} value={item.value}>{t(item.label)}</option>)}
-        </select>
+        <label htmlFor="activity-category">{t('Kategoria aktywności')}</label>
+        <input id="activity-category" list="activity-category-options" autoComplete="off" required maxLength={64}
+          value={form.category} placeholder={t('Np. siłownia, bieg, joga')}
+          onChange={event => setForm({ ...form, category: event.target.value })} />
+        <datalist id="activity-category-options">
+          {categories.map(name => <option key={name} value={name} />)}
+        </datalist>
         <label htmlFor="activity-date">{t('Data')}</label>
         <input id="activity-date" type="date" required max={todayIso()} value={form.date} onChange={event => setForm({ ...form, date: event.target.value })} />
         <label htmlFor="activity-description">{t('Opis (opcjonalnie)')}</label>
@@ -106,7 +111,7 @@ export default function PhysicalActivityPanel() {
       {items.length === 0 && !loadError && <p>{t('Nie ma jeszcze wpisów. Zapisz pierwszy trening.')}</p>}
       {items.map(item => <div className="activity-row" key={item.id}>
         <div>
-          <strong>{typeLabel(item.type)}</strong>
+          <strong>{item.category}</strong>
           <small>{formatDate(item.date)}</small>
           {item.description && <p>{item.description}</p>}
         </div>
