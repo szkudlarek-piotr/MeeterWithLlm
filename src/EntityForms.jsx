@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { t } from './i18n.js'
 
 export function CliqueForm({ places, onSave }) {
   const [error, setError] = useState('')
@@ -8,7 +9,7 @@ export function CliqueForm({ places, onSave }) {
     const data = new FormData(event.currentTarget)
     const cliqueName = String(data.get('cliqueName')).trim()
     if (cliqueName.length < 2 || cliqueName.length > 32) {
-      setError('Nazwa kliki powinna mieć od 2 do 32 znaków.')
+      setError(t('Nazwa kliki powinna mieć od 2 do 32 znaków.'))
       return
     }
     setSaving(true)
@@ -16,16 +17,16 @@ export function CliqueForm({ places, onSave }) {
     catch (error) { setError(error.message) } finally { setSaving(false) }
   }
   return <form onSubmit={submit}>
-    <p className="form-intro">Daj swojej ekipie wspólną nazwę.</p>
-    <label htmlFor="clique-name">Nazwa kliki</label>
+    <p className="form-intro">{t('Daj swojej ekipie wspólną nazwę.')}</p>
+    <label htmlFor="clique-name">{t('Nazwa kliki')}</label>
     <input autoFocus id="clique-name" name="cliqueName" required minLength={2} maxLength={32} onChange={() => setError('')} aria-describedby="clique-name-help" aria-invalid={!!error} />
-    <small id="clique-name-help" className="field-hint">Od 2 do 32 znaków.</small>
+    <small id="clique-name-help" className="field-hint">{t('Od 2 do 32 znaków.')}</small>
     {error && <p className="field-error" role="alert">{error}</p>}
-    <label htmlFor="clique-capital">Stolica kliki (opcjonalnie)</label>
-    <select id="clique-capital" name="cliqueCapital"><option value="">Bez stolicy</option>{places.map(place => <option key={place.id} value={place.id}>{place.name}</option>)}</select>
-    {!places.length && <small className="field-hint">Dodaj najpierw miejsce, aby wybrać je jako stolicę kliki.</small>}
-    <p className="demo-note">Członków przypiszesz, wybierając klikę w formularzu osoby. Klika zostanie zapisana w bazie developerskiej.</p>
-    <button className="primary submit" disabled={saving}>{saving ? 'Zapisywanie…' : 'Dodaj klikę →'}</button>
+    <label htmlFor="clique-capital">{t('Stolica kliki (opcjonalnie)')}</label>
+    <select id="clique-capital" name="cliqueCapital"><option value="">{t('Bez stolicy')}</option>{places.map(place => <option key={place.id} value={place.id}>{place.name}</option>)}</select>
+    {!places.length && <small className="field-hint">{t('Dodaj najpierw miejsce, aby wybrać je jako stolicę kliki.')}</small>}
+    <p className="demo-note">{t('Członków przypiszesz, wybierając klikę w formularzu osoby. Klika zostanie zapisana w bazie developerskiej.')}</p>
+    <button className="primary submit" disabled={saving}>{saving ? t('Zapisywanie…') : t('Dodaj klikę →')}</button>
   </form>
 }
 
@@ -44,15 +45,15 @@ export function PlaceForm({ onSave }) {
     catch (error) { setError(error.message) } finally { setSaving(false) }
   }
   return <form onSubmit={submit}>
-    <p className="form-intro">Zapisz miejsce, do którego prowadzą Twoje historie.</p>
-    <label htmlFor="place-name">Nazwa miejsca</label><input autoFocus id="place-name" name="name" required pattern=".*\S.*" />
-    <label htmlFor="place-category">Kategoria (opcjonalnie)</label><input id="place-category" name="category" placeholder="Np. kawiarnia, dom, park" />
+    <p className="form-intro">{t('Zapisz miejsce, do którego prowadzą Twoje historie.')}</p>
+    <label htmlFor="place-name">{t('Nazwa miejsca')}</label><input autoFocus id="place-name" name="name" required pattern=".*\S.*" />
+    <label htmlFor="place-category">{t('Kategoria (opcjonalnie)')}</label><input id="place-category" name="category" placeholder={t('Np. kawiarnia, dom, park')} />
     <div className="form-grid">
-      <div><label htmlFor="place-latitude">Szerokość geograficzna</label><input id="place-latitude" name="latitude" type="number" min={-90} max={90} step="any" required placeholder="52.2297" aria-describedby="latitude-help" /><small id="latitude-help" className="field-hint">Od −90 do 90.</small></div>
-      <div><label htmlFor="place-longitude">Długość geograficzna</label><input id="place-longitude" name="longitude" type="number" min={-180} max={180} step="any" required placeholder="21.0122" aria-describedby="longitude-help" /><small id="longitude-help" className="field-hint">Od −180 do 180.</small></div>
+      <div><label htmlFor="place-latitude">{t('Szerokość geograficzna')}</label><input id="place-latitude" name="latitude" type="number" min={-90} max={90} step="any" required placeholder="52.2297" aria-describedby="latitude-help" /><small id="latitude-help" className="field-hint">{t('Od −90 do 90.')}</small></div>
+      <div><label htmlFor="place-longitude">{t('Długość geograficzna')}</label><input id="place-longitude" name="longitude" type="number" min={-180} max={180} step="any" required placeholder="21.0122" aria-describedby="longitude-help" /><small id="longitude-help" className="field-hint">{t('Od −180 do 180.')}</small></div>
     </div>
-    <p className="demo-note">Miejsce będzie dostępne jako dom osoby i stolica kliki. Zapis w bazie developerskiej.</p>
+    <p className="demo-note">{t('Miejsce będzie dostępne jako dom osoby i stolica kliki. Zapis w bazie developerskiej.')}</p>
     {error && <p className="field-error" role="alert">{error}</p>}
-    <button className="primary submit" disabled={saving}>{saving ? 'Zapisywanie…' : 'Dodaj miejsce →'}</button>
+    <button className="primary submit" disabled={saving}>{saving ? t('Zapisywanie…') : t('Dodaj miejsce →')}</button>
   </form>
 }

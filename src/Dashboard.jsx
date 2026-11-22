@@ -11,24 +11,24 @@ import QuoteGamePanel from './QuoteGamePanel.jsx'
 import PeoplePanel from './PeoplePanel.jsx'
 import CliquesPanel from './CliquesPanel.jsx'
 import MyQuotesPanel from './MyQuotesPanel.jsx'
-import { t } from './i18n.js'
+import { t, tf } from './i18n.js'
 import AdminPanel from './AdminPanel.jsx'
 import NewsPanel from './NewsPanel.jsx'
 
-const interactionCategory = ['Interakcje', 'Dodaj interakcję', '☕', 'Typ interakcji']
+const interactionCategory = ['Interakcje', t('Dodaj interakcję'), '☕', t('Typ interakcji')]
 
 const categories = [
-  ['Ludzie', 'Dodaj osobę', '◎', 'Imię i nazwisko'],
-  ['Wizyty', 'Dodaj wizytę', '⌂', 'Nazwa wizyty'],
-  ['Spotkania', 'Dodaj spotkanie', '☕', 'Nazwa spotkania'],
-  ['Eventy', 'Dodaj event', '✦', 'Nazwa eventu'],
-  ['Miejsca', 'Dodaj miejsce', '⌖', 'Nazwa miejsca'],
-  ['Supermoce', 'Dodaj supermoc', 'ϟ', 'Nazwa supermocy'],
-  ['Podróże', 'Dodaj podróż', '↗', 'Nazwa podróży'],
-  ['Kliki', 'Dodaj klikę', '◌', 'Nazwa kliki'],
-  ['Współlokatorzy', 'Dodaj wspólne mieszkanie', '⌂', 'Wspólne mieszkanie'],
-  ['Śluby', 'Dodaj ślub', '♡', 'Nazwa ślubu'],
-  ['Cytaty', 'Dodaj cytat', '❝', 'Treść cytatu'],
+  ['Ludzie', t('Dodaj osobę'), '◎', t('Imię i nazwisko')],
+  ['Wizyty', t('Dodaj wizytę'), '⌂', t('Nazwa wizyty')],
+  ['Spotkania', t('Dodaj spotkanie'), '☕', t('Nazwa spotkania')],
+  ['Eventy', t('Dodaj event'), '✦', t('Nazwa eventu')],
+  ['Miejsca', t('Dodaj miejsce'), '⌖', t('Nazwa miejsca')],
+  ['Supermoce', t('Dodaj supermoc'), 'ϟ', t('Nazwa supermocy')],
+  ['Podróże', t('Dodaj podróż'), '↗', t('Nazwa podróży')],
+  ['Kliki', t('Dodaj klikę'), '◌', t('Nazwa kliki')],
+  ['Współlokatorzy', t('Dodaj wspólne mieszkanie'), '⌂', t('Wspólne mieszkanie')],
+  ['Śluby', t('Dodaj ślub'), '♡', t('Nazwa ślubu')],
+  ['Cytaty', t('Dodaj cytat'), '❝', t('Treść cytatu')],
 ]
 export default function Dashboard({ email, actorId, roles = [], profileVersion, publicQuotesOnly, onTogglePublicQuotes }) {
   const [people, setPeople] = useState([])
@@ -146,7 +146,7 @@ export default function Dashboard({ email, actorId, roles = [], profileVersion, 
   async function saveInteraction(endpoint, body) {
     const saved = await api(endpoint, { body })
     setCalendarVersion(current => current + 1)
-    setNotice(`Zapisano: ${saved.name}`)
+    setNotice(tf('Zapisano: {name}', { name: saved.name }))
     formDialog.current.close()
   }
 
@@ -159,14 +159,14 @@ export default function Dashboard({ email, actorId, roles = [], profileVersion, 
     await api('/quotes', { body })
     setCalendarVersion(current => current + 1)
     setView('people')
-    setNotice('Zapisano cytat.')
+    setNotice(t('Zapisano cytat.'))
     formDialog.current.close()
   }
 
   async function saveSuperpower(superpower) {
     const saved = await api('/superpowers', { body: { superpowerName: superpower.superpowerName } })
     setApiError('')
-    setNotice(`Zapisano supermoc: ${saved.superpowerName}`)
+    setNotice(tf('Zapisano supermoc: {name}', { name: saved.superpowerName }))
     formDialog.current.close()
   }
 
@@ -174,32 +174,32 @@ export default function Dashboard({ email, actorId, roles = [], profileVersion, 
     <>
       <div className={`dashboard ${view === 'calendar' ? 'calendar-layout' : ''}`}>
         <aside className="sidebar">
-          <div className="profile"><span className="avatar">{email[0].toUpperCase()}</span><div><strong>Twój Meeter</strong><small>{email}</small></div></div>
-          <nav aria-label="Menu główne">
-            <button className={`nav-item ${view === 'people' ? 'active' : ''}`} onClick={() => setView('people')}><span>◎</span> Ludzie</button>
-            <button className={`nav-item ${view === 'cliques' ? 'active' : ''}`} onClick={() => setView('cliques')}><span>◌</span> Kliki</button>
+          <div className="profile"><span className="avatar">{email[0].toUpperCase()}</span><div><strong>{t('Twój Meeter')}</strong><small>{email}</small></div></div>
+          <nav aria-label={t('Menu główne')}>
+            <button className={`nav-item ${view === 'people' ? 'active' : ''}`} onClick={() => setView('people')}><span>◎</span> {t('Ludzie')}</button>
+            <button className={`nav-item ${view === 'cliques' ? 'active' : ''}`} onClick={() => setView('cliques')}><span>◌</span> {t('Kliki')}</button>
             <button className={`nav-item ${view === 'my-quotes' ? 'active' : ''}`} onClick={() => setView('my-quotes')}><span>✎</span> {t('myQuotes.title')}</button>
-            {roles.includes('ROLE_ADMIN') && <button className={`nav-item ${view === 'admin' ? 'active' : ''}`} onClick={() => setView('admin')}><span>⚙</span> Administracja</button>}
-            <button className={`nav-item ${view === 'feed' ? 'active' : ''}`} onClick={() => setView('feed')}><span>▦</span> Aktualności</button>
-            <button className={`nav-item ${view === 'calendar' ? 'active' : ''}`} onClick={() => setView('calendar')}><span>▤</span> Kalendarz</button>
-            <button className={`nav-item ${view === 'game' ? 'active' : ''}`} onClick={() => setView('game')}><span>🎲</span> Zgadnij autora</button>
-            <button className={`nav-item ${view === 'single-game' ? 'active' : ''}`} onClick={() => setView('single-game')}><span>❝</span> KTO ETA SKAZAŁ</button>
+            {roles.includes('ROLE_ADMIN') && <button className={`nav-item ${view === 'admin' ? 'active' : ''}`} onClick={() => setView('admin')}><span>⚙</span> {t('Administracja')}</button>}
+            <button className={`nav-item ${view === 'feed' ? 'active' : ''}`} onClick={() => setView('feed')}><span>▦</span> {t('Aktualności')}</button>
+            <button className={`nav-item ${view === 'calendar' ? 'active' : ''}`} onClick={() => setView('calendar')}><span>▤</span> {t('Kalendarz')}</button>
+            <button className={`nav-item ${view === 'game' ? 'active' : ''}`} onClick={() => setView('game')}><span>🎲</span> {t('Zgadnij autora')}</button>
+            <button className={`nav-item ${view === 'single-game' ? 'active' : ''}`} onClick={() => setView('single-game')}><span>❝</span> {t('KTO ETA SKAZAŁ')}</button>
           </nav>
-          <p className="sidebar-heading">DODAJ DO SWOJEGO ŚWIATA</p>
-          <nav aria-label="Dodawanie">
+          <p className="sidebar-heading">{t('DODAJ DO SWOJEGO ŚWIATA')}</p>
+          <nav aria-label={t('Dodawanie')}>
             {categories.map(item => <button key={item[0]} className="nav-item" onClick={() => openForm(item)}><span>{item[2]}</span>{item[1]}<span className="nav-plus">+</span></button>)}
           </nav>
-          <div className="sidebar-note"><span>✧</span><p>Każde spotkanie<br />to nowa historia.</p></div>
+          <div className="sidebar-note"><span>✧</span><p>{t('Każde spotkanie')}<br />{t('to nowa historia.')}</p></div>
         </aside>
 
         <DashboardMain>
           {notice && <p className="save-notice" role="status">✓ {notice}</p>}
           {apiError && <p className="field-error" role="alert">{apiError}</p>}
           <SearchArea>
-            <label className="friend-search"><span aria-hidden="true">⌕</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Szukaj znajomych…" aria-label="Szukaj znajomych" /></label>
-            {query.trim() && <div className="search-results" aria-live="polite"><small>Znajomi · {visibleMatches.length}</small>{visibleMatches.length ? visibleMatches.map(person => <div className="person" key={person.id}><PersonAvatar person={person} /><span>{person.fullName}{person.demo && <small className="sample-person">przykład</small>}</span></div>) : <p>{searching ? 'Wyszukiwanie…' : searchError || 'Nie znaleziono znajomych.'}</p>}</div>}
+            <label className="friend-search"><span aria-hidden="true">⌕</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Szukaj znajomych…')} aria-label={t('Szukaj znajomych')} /></label>
+            {query.trim() && <div className="search-results" aria-live="polite"><small>{t('Znajomi')} · {visibleMatches.length}</small>{visibleMatches.length ? visibleMatches.map(person => <div className="person" key={person.id}><PersonAvatar person={person} /><span>{person.fullName}{person.demo && <small className="sample-person">{t('przykład')}</small>}</span></div>) : <p>{searching ? t('Wyszukiwanie…') : searchError || t('Nie znaleziono znajomych.')}</p>}</div>}
           </SearchArea>
-          <div className="page-heading"><div><p className="eyebrow">TWÓJ MAŁY WIELKI ŚWIAT</p><h2>{view === 'my-quotes' ? t('myQuotes.title') : view === 'admin' ? 'Administracja.' : view === 'cliques' ? 'Twoje kliki.' : view === 'people' ? 'Twoi ludzie.' : view === 'feed' ? 'Co nowego w Meeterze?' : view === 'single-game' ? 'KTO ETA SKAZAŁ' : view === 'game' ? 'Kto to powiedział?' : 'Czas na wspólne chwile.'}</h2><p>{view === 'my-quotes' ? t('myQuotes.intro') : view === 'admin' ? 'Narzędzia do zarządzania danymi Meetera.' : view === 'cliques' ? 'Ludzie, których łączą wspólne historie.' : view === 'people' ? 'Przeglądaj znajomych i wspólne wizyty.' : view === 'feed' ? 'Nowe funkcje, poprawki i usprawnienia w jednym miejscu.' : view === 'single-game' ? 'Jeden cytat. Wszyscy ludzie. Kto jest autorem?' : view === 'game' ? 'Zgadnij autora. Sprawdź, jak dobrze znasz swoich ludzi.' : 'Twoje spotkania, wizyty, eventy i podróże w jednym miejscu.'}</p></div><span className="demo-badge">Twój Meeter</span></div>
+          <div className="page-heading"><div><p className="eyebrow">{t('TWÓJ MAŁY WIELKI ŚWIAT')}</p><h2>{view === 'my-quotes' ? t('myQuotes.title') : view === 'admin' ? t('Administracja.') : view === 'cliques' ? t('Twoje kliki.') : view === 'people' ? t('Twoi ludzie.') : view === 'feed' ? t('Co nowego w Meeterze?') : view === 'single-game' ? t('KTO ETA SKAZAŁ') : view === 'game' ? t('Kto to powiedział?') : t('Czas na wspólne chwile.')}</h2><p>{view === 'my-quotes' ? t('myQuotes.intro') : view === 'admin' ? t('Narzędzia do zarządzania danymi Meetera.') : view === 'cliques' ? t('Ludzie, których łączą wspólne historie.') : view === 'people' ? t('Przeglądaj znajomych i wspólne wizyty.') : view === 'feed' ? t('Nowe funkcje, poprawki i usprawnienia w jednym miejscu.') : view === 'single-game' ? t('Jeden cytat. Wszyscy ludzie. Kto jest autorem?') : view === 'game' ? t('Zgadnij autora. Sprawdź, jak dobrze znasz swoich ludzi.') : t('Twoje spotkania, wizyty, eventy i podróże w jednym miejscu.')}</p></div><span className="demo-badge">{t('Twój Meeter')}</span></div>
 
           {view === 'admin' && roles.includes('ROLE_ADMIN') ? <AdminPanel onImported={() => setCalendarVersion(value => value + 1)} /> : view === 'cliques' ? <CliquesPanel publicQuotesOnly={publicQuotesOnly} onTogglePublicQuotes={onTogglePublicQuotes} version={cliques.length + people.length + calendarVersion} onAdd={() => openForm(categories[7])} /> : view === 'people' ? <PeoplePanel publicQuotesOnly={publicQuotesOnly} onTogglePublicQuotes={onTogglePublicQuotes} version={people.length + calendarVersion} onAdd={() => openForm(categories[0])} /> : view === 'single-game' ? <QuoteGamePanel key="single" single /> : view === 'game' ? <QuoteGamePanel key="classic" /> : view === 'feed' ? <NewsPanel /> : view === 'my-quotes' ? <MyQuotesPanel /> : <>
             <CalendarPanel month={month} entries={calendarEntries} selectedDate={selectedDate} actorId={actorId} onSelect={setSelectedDate} onMonthChange={next => { setMonth(next); setSelectedDate('') }} loading={calendarLoading} error={calendarError} retry={() => setCalendarVersion(current => current + 1)} onAdd={() => openForm(interactionCategory)} onInteractionChange={updateInteraction} />
@@ -208,7 +208,7 @@ export default function Dashboard({ email, actorId, roles = [], profileVersion, 
 
       </div>
 
-      <dialog ref={formDialog} className="login-dialog" aria-labelledby="add-title"><button className="close-dialog" aria-label="Zamknij" onClick={() => formDialog.current.close()}>×</button><p className="eyebrow">NOWA HISTORIA</p><h2 id="add-title">{category[1]}</h2>{category[0] === 'Ludzie' ? <HumanForm key={formVersion} onSave={saveHuman} cliques={cliques} places={places} /> : category[0] === 'Kliki' ? <CliqueForm key={formVersion} places={places} onSave={saveClique} /> : category[0] === 'Miejsca' ? <PlaceForm key={formVersion} onSave={savePlace} /> : category[0] === 'Cytaty' ? <QuoteForm key={formVersion} onSave={saveQuote} /> : category[0] === 'Supermoce' ? <SuperpowerForm key={formVersion} onSave={saveSuperpower} /> : category[0] === 'Interakcje' ? <InteractionAddForm key={formVersion} initialDate={selectedDate} actorId={actorId} onSave={saveInteraction} /> : interactionTypes[category[0]] ? <InteractionForm key={formVersion} category={category[0]} actorId={actorId} initialDate={selectedDate} onSave={saveInteraction} /> : <form onSubmit={save}><label htmlFor="entry-name">{category[3]}</label><input id="entry-name" name="name" required maxLength={120} /><label htmlFor="entry-date">Data (opcjonalnie)</label><input key={selectedDate} id="entry-date" type="date" name="date" defaultValue={selectedDate} /><label htmlFor="entry-note">Notatka (opcjonalnie)</label><textarea id="entry-note" name="note" rows={3} maxLength={1000} /><p className="demo-note">Wpis zostanie dodany do wersji demo na czas tej sesji.</p><button className="primary submit">Zapisz</button></form>}</dialog>
+      <dialog ref={formDialog} className="login-dialog" aria-labelledby="add-title"><button className="close-dialog" aria-label={t('Zamknij')} onClick={() => formDialog.current.close()}>×</button><p className="eyebrow">{t('NOWA HISTORIA')}</p><h2 id="add-title">{category[1]}</h2>{category[0] === 'Ludzie' ? <HumanForm key={formVersion} onSave={saveHuman} cliques={cliques} places={places} /> : category[0] === 'Kliki' ? <CliqueForm key={formVersion} places={places} onSave={saveClique} /> : category[0] === 'Miejsca' ? <PlaceForm key={formVersion} onSave={savePlace} /> : category[0] === 'Cytaty' ? <QuoteForm key={formVersion} onSave={saveQuote} /> : category[0] === 'Supermoce' ? <SuperpowerForm key={formVersion} onSave={saveSuperpower} /> : category[0] === 'Interakcje' ? <InteractionAddForm key={formVersion} initialDate={selectedDate} actorId={actorId} onSave={saveInteraction} /> : interactionTypes[category[0]] ? <InteractionForm key={formVersion} category={category[0]} actorId={actorId} initialDate={selectedDate} onSave={saveInteraction} /> : <form onSubmit={save}><label htmlFor="entry-name">{category[3]}</label><input id="entry-name" name="name" required maxLength={120} /><label htmlFor="entry-date">{t('Data (opcjonalnie)')}</label><input key={selectedDate} id="entry-date" type="date" name="date" defaultValue={selectedDate} /><label htmlFor="entry-note">{t('Notatka (opcjonalnie)')}</label><textarea id="entry-note" name="note" rows={3} maxLength={1000} /><p className="demo-note">{t('Wpis zostanie dodany do wersji demo na czas tej sesji.')}</p><button className="primary submit">{t('Zapisz')}</button></form>}</dialog>
     </>
   )
 }

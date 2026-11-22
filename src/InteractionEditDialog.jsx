@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
 import InteractionForm, { interactionEntry, interactionTypes } from './InteractionForm.jsx'
+import { t } from './i18n.js'
 
 export default function InteractionEditDialog({ interactionId, actorId, onClose, onSaved }) {
   const dialog = useRef(null)
@@ -28,12 +29,12 @@ export default function InteractionEditDialog({ interactionId, actorId, onClose,
   }
   const category = interaction && Object.keys(interactionTypes).find(key => interactionTypes[key].type === interaction.type)
   return <dialog ref={dialog} className="login-dialog" aria-labelledby="edit-interaction-title" onCancel={event => { event.preventDefault(); if (!saving) onClose() }}>
-    <button type="button" className="close-dialog" aria-label="Zamknij edycję" disabled={saving} onClick={onClose}>×</button>
-    <p className="eyebrow">TWOJA HISTORIA</p>
-    <h2 id="edit-interaction-title">Edytuj interakcję</h2>
-    {error ? <p className="field-error" role="alert">{error} <button type="button" onClick={() => setRetry(value => value + 1)}>Spróbuj ponownie</button></p>
+    <button type="button" className="close-dialog" aria-label={t('Zamknij edycję')} disabled={saving} onClick={onClose}>×</button>
+    <p className="eyebrow">{t('TWOJA HISTORIA')}</p>
+    <h2 id="edit-interaction-title">{t('Edytuj interakcję')}</h2>
+    {error ? <p className="field-error" role="alert">{error} <button type="button" onClick={() => setRetry(value => value + 1)}>{t('Spróbuj ponownie')}</button></p>
       : interaction ? <InteractionForm key={interaction.id} category={category} actorId={actorId} initialInteraction={interaction} onSave={save} />
-        : <p role="status">Wczytywanie interakcji…</p>}
-    <button type="button" className="text-button" disabled={saving} onClick={onClose}>Anuluj</button>
+        : <p role="status">{t('Wczytywanie interakcji…')}</p>}
+    <button type="button" className="text-button" disabled={saving} onClick={onClose}>{t('Anuluj')}</button>
   </dialog>
 }

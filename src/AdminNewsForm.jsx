@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from './api.js'
+import { t } from './i18n.js'
 
 export default function AdminNewsForm() {
   const [busy, setBusy] = useState(false)
@@ -25,15 +26,15 @@ export default function AdminNewsForm() {
   }
 
   return <section className="card admin-photo-import" aria-labelledby="admin-news-title">
-    <h3 id="admin-news-title">Dodaj aktualność</h3>
+    <h3 id="admin-news-title">{t('Dodaj aktualność')}</h3>
     <form onSubmit={submit}>
-      <label htmlFor="news-title">Tytuł</label>
+      <label htmlFor="news-title">{t('Tytuł')}</label>
       <input id="news-title" name="title" maxLength={160} required disabled={busy} />
-      <label htmlFor="news-content">Treść</label>
+      <label htmlFor="news-content">{t('Treść')}</label>
       <textarea id="news-content" name="content" rows={6} maxLength={10240} required disabled={busy} />
-      <button className="primary" disabled={busy}>{busy ? 'Publikowanie…' : 'Opublikuj'}</button>
+      <button className="primary" disabled={busy}>{busy ? t('Publikowanie…') : t('Opublikuj')}</button>
     </form>
     {error && <p className="field-error" role="alert">{error}</p>}
-    {published && <p role="status">Aktualność została opublikowana.</p>}
+    {published && <p role="status">{t('Aktualność została opublikowana.')}</p>}
   </section>
 }

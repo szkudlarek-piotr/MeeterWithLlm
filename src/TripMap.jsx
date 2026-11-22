@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { placesCategoriesDict } from './PlacesCategoriesDict.js'
+import { t } from './i18n.js'
 
 const normalizeCategory = category => String(category ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pl-PL')
 const categoryIcons = new Map(Object.entries(placesCategoriesDict).map(([category, filename]) => [normalizeCategory(category), filename]))
@@ -32,7 +33,7 @@ function categoryMarker(place) {
 const validPoint = place => Number.isFinite(place.latitude) && Number.isFinite(place.longitude)
   && Math.abs(place.latitude) <= 90 && Math.abs(place.longitude) <= 180
 
-export default function TripMap({ places = [], title = 'Miejsca na trasie', emptyMessage = 'Dodaj miejsca ze współrzędnymi, aby zobaczyć mapę podróży.' }) {
+export default function TripMap({ places = [], title = t('Miejsca na trasie'), emptyMessage = t('Dodaj miejsca ze współrzędnymi, aby zobaczyć mapę podróży.') }) {
   const container = useRef(null)
   const [tileError, setTileError] = useState(false)
   const uniquePlaces = [...new Map(places.map(place => [place.id, place])).values()]
@@ -70,7 +71,7 @@ export default function TripMap({ places = [], title = 'Miejsca na trasie', empt
     <h4>{title}</h4>
     {points.length ? <>
       <div ref={container} className="trip-map" role="region" aria-label={title} />
-      {tileError && <p className="field-hint" role="status">Nie udało się pobrać części mapy. Miejsca znajdziesz na liście poniżej.</p>}
+      {tileError && <p className="field-hint" role="status">{t('Nie udało się pobrać części mapy. Miejsca znajdziesz na liście poniżej.')}</p>}
     </> : <p className="field-hint">{emptyMessage}</p>}
     {uniquePlaces.length > 0 && <MapPlaces>{uniquePlaces.map(place => <li key={place.id}>{placeLabel(place)}</li>)}</MapPlaces>}
   </section>

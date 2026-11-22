@@ -4,10 +4,10 @@ import { PersonAvatar, ParticipantsEditor } from './CalendarPanel.jsx'
 import { interactionEntry } from './InteractionForm.jsx'
 import QuoteContent from './QuoteContent.jsx'
 import TripMap from './TripMap.jsx'
-import { t } from './i18n.js'
+import { t, tf, dateLocale } from './i18n.js'
 
-const sections = [['profile', 'Profil'], ['map', 'Mapa interakcji'], ['VISIT', 'Wizyty'], ['MEETING', 'Spotkania'], ['EVENT', 'Eventy'], ['TRIP', 'Podróże'], ['quotes', 'Cytaty']]
-const date = value => new Date(`${value.slice(0, 10)}T12:00:00`).toLocaleDateString('pl-PL')
+const sections = [['profile', t('Profil')], ['map', t('Mapa interakcji')], ['VISIT', t('Wizyty')], ['MEETING', t('Spotkania')], ['EVENT', t('Eventy')], ['TRIP', t('Podróże')], ['quotes', t('Cytaty')]]
+const date = value => new Date(`${value.slice(0, 10)}T12:00:00`).toLocaleDateString(dateLocale())
 
 export function PhotoForm({ person, onSave, endpoint = `/people/${person.id}/photo` }) {
   const [source, setSource] = useState('file')
@@ -21,27 +21,27 @@ export function PhotoForm({ person, onSave, endpoint = `/people/${person.id}/pho
     try {
       let body = { url }
       if (source === 'file') {
-        if (!file) throw new Error('Wybierz zdjęcie.')
-        if (file.size > 4 * 1024 * 1024) throw new Error('Zdjęcie może mieć maksymalnie 4 MB.')
+        if (!file) throw new Error(t('Wybierz zdjęcie.'))
+        if (file.size > 4 * 1024 * 1024) throw new Error(t('Zdjęcie może mieć maksymalnie 4 MB.'))
         const data = await new Promise((resolve, reject) => {
           const reader = new FileReader()
           reader.onload = () => resolve(String(reader.result).split(',')[1])
-          reader.onerror = () => reject(new Error('Nie udało się odczytać pliku.'))
+          reader.onerror = () => reject(new Error(t('Nie udało się odczytać pliku.')))
           reader.readAsDataURL(file)
         })
         body = { photoData: data }
       }
       const saved = await api(endpoint, { body })
       onSave({ ...saved, profilePhotoUrl: saved.profilePhotoUrl?.replace(/^\/api\/v2\/people\/(?!browse\/|self\/)/, '/api/v2/people/browse/') })
-      setNotice('Zapisano zdjęcie profilowe.')
+      setNotice(t('Zapisano zdjęcie profilowe.'))
     } catch (failure) { setError(failure.message) }
     finally { setBusy(false) }
   }
   return <form className="profile-photo-form" onSubmit={submit}>
-    <fieldset disabled={busy}><legend>Dodaj lub zmień zdjęcie profilowe</legend>
-      <label>Źródło zdjęcia<select value={source} onChange={event => { setSource(event.target.value); setError(''); setNotice('') }}><option value="file">Plik z komputera</option><option value="url">Publiczny link</option></select></label>
-      {source === 'file' ? <label>Zdjęcie JPG, PNG lub GIF (do 4 MB)<input type="file" accept="image/jpeg,image/png,image/gif" required onChange={event => { setFile(event.target.files[0] || null); setNotice('') }} /></label> : <label>Bezpośredni adres zdjęcia<input type="url" required maxLength={2048} value={url} onChange={event => setUrl(event.target.value)} /></label>}
-      <button className="primary" disabled={busy}>{busy ? 'Zapisywanie…' : 'Zapisz zdjęcie'}</button>
+    <fieldset disabled={busy}><legend>{t('Dodaj lub zmień zdjęcie profilowe')}</legend>
+      <label>{t('Źródło zdjęcia')}<select value={source} onChange={event => { setSource(event.target.value); setError(''); setNotice('') }}><option value="file">{t('Plik z komputera')}</option><option value="url">{t('Publiczny link')}</option></select></label>
+      {source === 'file' ? <label>{t('Zdjęcie JPG, PNG lub GIF (do 4 MB)')}<input type="file" accept="image/jpeg,image/png,image/gif" required onChange={event => { setFile(event.target.files[0] || null); setNotice('') }} /></label> : <label>{t('Bezpośredni adres zdjęcia')}<input type="url" required maxLength={2048} value={url} onChange={event => setUrl(event.target.value)} /></label>}
+      <button className="primary" disabled={busy}>{busy ? t('Zapisywanie…') : t('Zapisz zdjęcie')}</button>
     </fieldset>
     {error && <p className="field-error" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
   </form>
@@ -149,18 +149,18 @@ export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly,
   }, [person.id, section, page, retry, requestKey, refresh])
   return <>
     <div className="person-detail-heading"><PersonAvatar person={person} /><h2 id="person-detail-title">{person.fullName}</h2></div>
-    <nav className="person-profile-tabs" aria-label="Szczegóły osoby">{sections.map(([key, label]) => <button key={key} type="button" aria-current={section === key ? 'page' : undefined} onClick={() => { setSection(key); setPage(0) }}>{label}</button>)}</nav>
-    {profileError && <p role="alert" className="field-error">{profileError} <button onClick={() => setRetry(value => value + 1)}>Spróbuj ponownie</button></p>}
+    <nav className="person-profile-tabs" aria-label={t('Szczegóły osoby')}>{sections.map(([key, label]) => <button key={key} type="button" aria-current={section === key ? 'page' : undefined} onClick={() => { setSection(key); setPage(0) }}>{label}</button>)}</nav>
+    {profileError && <p role="alert" className="field-error">{profileError} <button onClick={() => setRetry(value => value + 1)}>{t('Spróbuj ponownie')}</button></p>}
     {section === 'profile' ? <>
       {profile && <p>{profile.lastSeen
-        ? <>Ostatni raz widzieliście się {profile.lastSeen.daysAgo} {profile.lastSeen.daysAgo === 1 ? 'dzień' : 'dni'} temu. Okazją do tego było {profile.lastSeen.interactionName}.</>
-        : 'Brak zapisanych wspólnych interakcji.'}</p>}
+        ? tf('Ostatni raz widzieliście się {days} {unit} temu. Okazją do tego było {name}.', { days: profile.lastSeen.daysAgo, unit: t(profile.lastSeen.daysAgo === 1 ? 'dzień' : 'dni'), name: profile.lastSeen.interactionName })
+        : t('Brak zapisanych wspólnych interakcji.')}</p>}
       <dl className="person-detail-fields">
-        {entry.visitCount != null && <div><dt>Twoje wspólne wizyty</dt><dd>{entry.visitCount}</dd></div>}
-        {person.birthdayDate && <div><dt>Data urodzenia</dt><dd>{date(person.birthdayDate)}</dd></div>}
-        {person.livesIn && <div><dt>Mieszka w</dt><dd>{person.livesIn}</dd></div>}
-        {person.home && <div><dt>Dom</dt><dd>{person.home.name}</dd></div>}
-        {person.clique && <div><dt>Klika</dt><dd>
+        {entry.visitCount != null && <div><dt>{t('Twoje wspólne wizyty')}</dt><dd>{entry.visitCount}</dd></div>}
+        {person.birthdayDate && <div><dt>{t('Data urodzenia')}</dt><dd>{date(person.birthdayDate)}</dd></div>}
+        {person.livesIn && <div><dt>{t('Mieszka w')}</dt><dd>{person.livesIn}</dd></div>}
+        {person.home && <div><dt>{t('Dom')}</dt><dd>{person.home.name}</dd></div>}
+        {person.clique && <div><dt>{t('Klika')}</dt><dd>
           {profile?.cliqueIcon?.photoUrl && <img key={profile.cliqueIcon.photoUrl} className="person-clique-icon"
             src={profile.cliqueIcon.photoUrl} alt="" width={32} height={32} onError={event => { event.currentTarget.hidden = true }} />}
           {person.clique.cliqueName}
@@ -173,49 +173,49 @@ export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly,
             : <span aria-hidden="true">{item.superpowerName.charAt(0)}</span>}
         </li>)}
       </ul>}
-      {/^(https?:\/\/)/i.test(person.fbLink || '') && <a href={person.fbLink} target="_blank" rel="noopener noreferrer">Profil na Facebooku ↗</a>}
+      {/^(https?:\/\/)/i.test(person.fbLink || '') && <a href={person.fbLink} target="_blank" rel="noopener noreferrer">{t('Profil na Facebooku ↗')}</a>}
       <section className="superpower-editor" aria-labelledby="person-superpowers-title">
-        <h3 id="person-superpowers-title">Supermoce</h3>
+        <h3 id="person-superpowers-title">{t('Supermoce')}</h3>
         {superpowerError && <p className="field-error" role="alert">{superpowerError}</p>}
         {superpowers.length ? <ul className="superpower-list">
           {superpowers.map(item => <li key={item.superpowerId}>
             {item.photoUrl && <img src={item.photoUrl} alt="" width="40" height="40" loading="lazy" style={{ borderRadius: 6, objectFit: 'cover' }} />}<span>{item.superpowerName}</span>
-            {canEditSuperpowers && <button type="button" className="text-button superpower-remove" disabled={superpowerBusy} onClick={() => removeSuperpower(item.superpowerId)}>Usuń</button>}
+            {canEditSuperpowers && <button type="button" className="text-button superpower-remove" disabled={superpowerBusy} onClick={() => removeSuperpower(item.superpowerId)}>{t('Usuń')}</button>}
           </li>)}
-        </ul> : <p className="field-hint">Brak przypisanych supermocy.</p>}
+        </ul> : <p className="field-hint">{t('Brak przypisanych supermocy.')}</p>}
         {canEditSuperpowers && <form className="superpower-add" onSubmit={addSuperpower}>
-          <label htmlFor="superpower-picker">Dodaj supermoc</label>
+          <label htmlFor="superpower-picker">{t('Dodaj supermoc')}</label>
           <select id="superpower-picker" value={selectedSuperpower} disabled={superpowerBusy} onChange={event => { setSelectedSuperpower(event.target.value); setSuperpowerError('') }}>
-            <option value="">Wybierz supermoc…</option>
+            <option value="">{t('Wybierz supermoc…')}</option>
             {availableSuperpowers.map(item => <option key={item.id} value={item.id}>{item.superpowerName}</option>)}
           </select>
-          <button className="primary" type="submit" disabled={superpowerBusy || !selectedSuperpower}>{superpowerBusy ? 'Zapisywanie…' : 'Dodaj'}</button>
+          <button className="primary" type="submit" disabled={superpowerBusy || !selectedSuperpower}>{superpowerBusy ? t('Zapisywanie…') : t('Dodaj')}</button>
         </form>}
       </section>
       {profile?.canEditPhoto && <PhotoForm person={person} onSave={saved => { setPerson(saved); onPersonChange(saved) }} />}
-      {profile && !profile.canEditPhoto && <p className="field-hint">Zdjęcie może zmienić właściciel rekordu osoby lub administrator.</p>}
-      {!profile && !profileError && <p role="status" className="field-hint">Sprawdzanie uprawnień do zmiany zdjęcia…</p>}
+      {profile && !profile.canEditPhoto && <p className="field-hint">{t('Zdjęcie może zmienić właściciel rekordu osoby lub administrator.')}</p>}
+      {!profile && !profileError && <p role="status" className="field-hint">{t('Sprawdzanie uprawnień do zmiany zdjęcia…')}</p>}
     </> : <>
       {section === 'quotes' && <button type="button" className="public-quotes-toggle" aria-pressed={publicQuotesOnly}
-        onClick={() => { setPage(0); setVoteError(''); onTogglePublicQuotes() }}>Tylko publiczne cytaty</button>}
-      {loading && !data && <p role="status">Wczytywanie…</p>}
+        onClick={() => { setPage(0); setVoteError(''); onTogglePublicQuotes() }}>{t('Tylko publiczne cytaty')}</button>}
+      {loading && !data && <p role="status">{t('Wczytywanie…')}</p>}
       {section === 'quotes' && voteError && <p className="field-error" role="alert">{voteError}</p>}
-      {error && <p className="field-error" role="alert">{error} <button onClick={() => setRetry(value => value + 1)}>Spróbuj ponownie</button></p>}
-      {data && (section === 'map' ? <><p className="field-hint">Mapa wszystkich dostępnych wizyt, spotkań, eventów i podróży. Pokazujemy wyłącznie zapisane miejsca ze współrzędnymi.</p><TripMap places={data} title="Mapa interakcji" emptyMessage="Brak dostępnych interakcji z miejscami na mapie." /></> : <>
-        <p role="status">Liczba wyników: {data.totalElements}</p>
-        {!data.content.length && <p>Brak dostępnych {section === 'quotes' ? 'cytatów' : 'interakcji'}.</p>}
+      {error && <p className="field-error" role="alert">{error} <button onClick={() => setRetry(value => value + 1)}>{t('Spróbuj ponownie')}</button></p>}
+      {data && (section === 'map' ? <><p className="field-hint">{t('Mapa wszystkich dostępnych wizyt, spotkań, eventów i podróży. Pokazujemy wyłącznie zapisane miejsca ze współrzędnymi.')}</p><TripMap places={data} title={t('Mapa interakcji')} emptyMessage={t('Brak dostępnych interakcji z miejscami na mapie.')} /></> : <>
+        <p role="status">{tf('Liczba wyników: {total}', { total: data.totalElements })}</p>
+        {!data.content.length && <p>{tf('Brak dostępnych {what}.', { what: section === 'quotes' ? t('cytatów') : t('interakcji') })}</p>}
         {data.content.map(item => section === 'quotes' ? <article className="card profile-entry person-public-quote" key={item.id}>
-          <small>{item.isPublic ? 'PUBLICZNY CYTAT' : 'PRYWATNY CYTAT'}</small>
+          <small>{item.isPublic ? t('PUBLICZNY CYTAT') : t('PRYWATNY CYTAT')}</small>
           <QuoteContent quote={item.quote} tabIndex={0} />
-          <div className="quote-vote" role="group" aria-label="Ocena cytatu" aria-busy={votingId === item.id}>
-            <button type="button" aria-label={item.myVote === 1 ? 'Cofnij plusa' : 'Daj plusa'} aria-pressed={item.myVote === 1}
+          <div className="quote-vote" role="group" aria-label={t('Ocena cytatu')} aria-busy={votingId === item.id}>
+            <button type="button" aria-label={item.myVote === 1 ? t('Cofnij plusa') : t('Daj plusa')} aria-pressed={item.myVote === 1}
               disabled={item.myVote === -1 || votingId != null || loading} onClick={() => voteForQuote(item.id, 'PLUS', item.myVote === 1)}>+</button>
-            <span aria-label={`Wynik: ${item.score}`}>{item.score > 0 ? `+${item.score}` : item.score}</span>
-            <button type="button" aria-label={item.myVote === -1 ? 'Cofnij minusa' : 'Daj minusa'} aria-pressed={item.myVote === -1}
+            <span aria-label={tf('Wynik: {score}', { score: item.score })}>{item.score > 0 ? `+${item.score}` : item.score}</span>
+            <button type="button" aria-label={item.myVote === -1 ? t('Cofnij minusa') : t('Daj minusa')} aria-pressed={item.myVote === -1}
               disabled={item.myVote === 1 || votingId != null || loading} onClick={() => voteForQuote(item.id, 'MINUS', item.myVote === -1)}>−</button>
           </div>
-          {item.myVote != null && <small>Twój głos: {item.myVote === 1 ? 'plus' : 'minus'}</small>}
-          {votingId === item.id && <small role="status">Zapisywanie głosu…</small>}
+          {item.myVote != null && <small>{tf('Twój głos: {vote}', { vote: item.myVote === 1 ? t('plus') : t('minus') })}</small>}
+          {votingId === item.id && <small role="status">{t('Zapisywanie głosu…')}</small>}
         </article> : <article className="card profile-entry" key={item.id}>
           <h3>{item.name}</h3><p>{date(item.startDate)}{item.endDate && item.endDate.slice(0, 10) !== item.startDate.slice(0, 10) ? ` — ${date(item.endDate)}` : ''}</p>
           {(item.place || item.details.placeString) && <p>{[item.place?.name, item.details.placeString].filter(Boolean).join(' · ')}</p>}
@@ -226,7 +226,7 @@ export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly,
           {item.type === 'TRIP' && <TripMap places={item.details.places} />}
           {item.details.photoUrl && <img className="memory-photo" src={item.details.photoUrl} alt={item.details.photoName || item.name} loading="lazy" />}
         </article>)}
-        {(page > 0 || data.hasNext) && <div className="event-photo-pages"><button disabled={page === 0} onClick={() => setPage(value => value - 1)}>Poprzednia strona</button><span>Strona {page + 1}</span><button disabled={!data.hasNext} onClick={() => setPage(value => value + 1)}>Następna strona</button></div>}
+        {(page > 0 || data.hasNext) && <div className="event-photo-pages"><button disabled={page === 0} onClick={() => setPage(value => value - 1)}>{t('Poprzednia strona')}</button><span>{t('Strona')} {page + 1}</span><button disabled={!data.hasNext} onClick={() => setPage(value => value + 1)}>{t('Następna strona')}</button></div>}
       </>)}
     </>}
   </>
