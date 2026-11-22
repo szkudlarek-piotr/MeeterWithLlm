@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
-import { t, tf, dateLocale } from './i18n.js'
+import { t, dateLocale } from './i18n.js'
 
 const activityTypes = [
   { value: 'RUN', label: 'Bieg' },
@@ -12,7 +12,7 @@ const activityTypes = [
 ]
 const typeLabel = value => t((activityTypes.find(item => item.value === value) ?? activityTypes[5]).label)
 const todayIso = () => new Date().toLocaleDateString('sv-SE')
-const emptyForm = () => ({ type: 'GYM', date: todayIso(), durationMinutes: '', description: '' })
+const emptyForm = () => ({ type: 'GYM', date: todayIso(), description: '' })
 const formatDate = iso => new Date(`${iso}T00:00:00`).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
 
 export default function PhysicalActivityPanel() {
@@ -38,7 +38,7 @@ export default function PhysicalActivityPanel() {
 
   function edit(item) {
     setEditingId(item.id)
-    setForm({ type: item.type, date: item.date, durationMinutes: String(item.durationMinutes), description: item.description ?? '' })
+    setForm({ type: item.type, date: item.date, description: item.description ?? '' })
     setError('')
   }
 
@@ -50,12 +50,7 @@ export default function PhysicalActivityPanel() {
 
   async function submit(event) {
     event.preventDefault()
-    const minutes = Number(form.durationMinutes)
-    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 1440) {
-      setError(t('Podaj czas trwania od 1 do 1440 minut.'))
-      return
-    }
-    const body = { type: form.type, date: form.date, durationMinutes: minutes, description: form.description.trim() || null }
+    const body = { type: form.type, date: form.date, description: form.description.trim() || null }
     setBusy(true)
     setError('')
     try {
@@ -82,12 +77,11 @@ export default function PhysicalActivityPanel() {
     }
   }
 
-  return <section className="card physical-activity">
+  return <section className="card physical-activity" style={{ maxWidth: 640, margin: '0 auto' }}>
     <h3>{t('Aktywność fizyczna')}</h3>
     {loadError && <p className="field-error" role="alert">{loadError}</p>}
     {summary && <div className="activity-summary" aria-label={t('Podsumowanie aktywności')}>
       <p><strong>{summary.weekCount}</strong> {t('treningów w tym tygodniu')}</p>
-      <p><strong>{summary.weekMinutes}</strong> {t('minut w tym tygodniu')}</p>
       <p><strong>{summary.streakDays}</strong> {t('dni z rzędu')}</p>
     </div>}
 
@@ -100,8 +94,6 @@ export default function PhysicalActivityPanel() {
         </select>
         <label htmlFor="activity-date">{t('Data')}</label>
         <input id="activity-date" type="date" required max={todayIso()} value={form.date} onChange={event => setForm({ ...form, date: event.target.value })} />
-        <label htmlFor="activity-minutes">{t('Czas trwania (minuty)')}</label>
-        <input id="activity-minutes" type="number" required min={1} max={1440} value={form.durationMinutes} onChange={event => setForm({ ...form, durationMinutes: event.target.value })} />
         <label htmlFor="activity-description">{t('Opis (opcjonalnie)')}</label>
         <textarea id="activity-description" maxLength={1000} rows={3} value={form.description} placeholder={t('Np. hantle 12 kg × 10, pompki 30')} onChange={event => setForm({ ...form, description: event.target.value })} />
         {error && <p className="field-error" role="alert">{error}</p>}
@@ -115,7 +107,7 @@ export default function PhysicalActivityPanel() {
       {items.map(item => <div className="activity-row" key={item.id}>
         <div>
           <strong>{typeLabel(item.type)}</strong>
-          <small>{formatDate(item.date)} · {tf('{minutes} min', { minutes: item.durationMinutes })}</small>
+          <small>{formatDate(item.date)}</small>
           {item.description && <p>{item.description}</p>}
         </div>
         <div>
