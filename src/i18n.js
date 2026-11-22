@@ -647,6 +647,10 @@ const enPhrases = {
   'Siłownia': 'Gym',
   'Pływanie': 'Swimming',
   'Inne': 'Other',
+  'Kategoria aktywności': 'Activity category',
+  'Np. siłownia, bieg, joga': 'E.g. gym, running, yoga',
+  'Podaj kategorię aktywności.': 'Enter an activity category.',
+  'Kategoria może mieć najwyżej 64 znaki.': 'The category can be at most 64 characters.',
   // PHRASES_EN_END
 }
 
