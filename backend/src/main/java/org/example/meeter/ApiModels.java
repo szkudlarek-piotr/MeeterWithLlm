@@ -37,7 +37,7 @@ public final class ApiModels {
   static CliqueView of(Clique c) { return c==null?null:new CliqueView(c.getId(),c.getCliqueName(),PlaceView.of(c.getCliqueCapital())); }
  }
  public record HumanView(Long id,UUID uuid,String name,String surname,String fullName,LocalDate birthdayDate,String fbLink,String gender,String livesIn,PlaceView home,CliqueView clique,String profilePhotoUrl,boolean demo) {
-  static HumanView forBrowse(Human h) {
+  public static HumanView forBrowse(Human h) {
    var value=of(h);
    return new HumanView(value.id(),value.uuid(),value.name(),value.surname(),value.fullName(),value.birthdayDate(),value.fbLink(),value.gender(),value.livesIn(),value.home(),value.clique(),value.profilePhotoUrl()==null?null:value.profilePhotoUrl().replace("/api/people/","/api/people/browse/"),value.demo());
   }

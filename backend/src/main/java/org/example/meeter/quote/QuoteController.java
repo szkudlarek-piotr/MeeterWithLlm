@@ -28,6 +28,11 @@ public class QuoteController {
         return service.mine(page, size);
     }
 
+    @PatchMapping("/{id}")
+    public View edit(@PathVariable @Positive Long id, @Valid @RequestBody EditInput input) {
+        return service.edit(id, input.quote());
+    }
+
     @PatchMapping("/{id}/visibility")
     public View visibility(@PathVariable @Positive Long id, @RequestBody VisibilityInput input) {
         return service.setVisibility(id, input.isPublic());

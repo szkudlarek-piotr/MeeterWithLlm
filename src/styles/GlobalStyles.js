@@ -14,6 +14,7 @@ import admin from './admin.js'
 import recommendations from './recommendations.js'
 import selfProfile from './selfProfile.js'
 import myQuotes from './myQuotes.js'
+import physicalActivity from './physicalActivity.js'
 
 // Keep the cascade across shared classes and responsive overrides.
 export default createGlobalStyle`
@@ -32,4 +33,5 @@ export default createGlobalStyle`
   ${recommendations}
   ${selfProfile}
   ${myQuotes}
+  ${physicalActivity}
 `

@@ -25,6 +25,19 @@ export default css`
 .superpower-list li:hover .superpower-remove, .superpower-list li:focus-within .superpower-remove { opacity: 1; }
 .superpower-editor { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
 .superpower-editor h3 { margin: 0 0 12px; font-size: 15px; }
+.family-panel h4 { margin: 20px 0 10px; font-size: 13px; color: var(--muted); }
+.family-generation ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.family-generation li { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--soft); border-radius: 12px; font-size: 13px; }
+.family-generation li.is-focus { outline: 2px solid var(--accent); }
+.family-links { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
+.family-links li { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.family-links .text-button { padding: 0; }
+.family-add fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.family-add label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.seen-with { margin: 24px 0; }
+.seen-with h3 { margin: 0 0 14px; font-size: 14px; }
+.seen-with-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.seen-with-list li { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 10px; background: var(--soft); border-radius: 12px; font-size: 13px; overflow-wrap: anywhere; }
 .superpower-list { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 8px; }
 .superpower-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--soft); border-radius: 10px; font-size: 13px; }
 .superpower-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }

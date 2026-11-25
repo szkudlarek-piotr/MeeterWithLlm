@@ -48,6 +48,8 @@ Backup exception requested by the user: root `backup.ps1` must use only the call
 - `backend/RELATIONSHIPS.md`: association entities, relationship metadata, and the legacy H2 schema migration.
 - `backend/QUOTES.md`: quote creation, public/author/admin reads, validation, and visibility semantics.
 - `backend/QUOTE_GAME.md`: public-only sampling, individual games, server timers, guess persistence, and leaderboard scoring.
+- `backend/FAMILY.md`: private family tree (parent-child and spouse links) stored in SQL, tree and edit endpoints, and the Family tab of the person dialog ("modal człowieka").
+- `experiments/participants/NEURAL.md`: default `*_neural` participant ranker, a per-account network trained online from the account's history, with weights in Git-ignored `artifacts/online/`; automatic context/guest mode switching; owner-run `compare_neural.py`. Agents must not run that comparison or read `history.json`, `artifacts/` (trained or online weights), metrics, logs or other files derived from the data.
 - `backend/AUTH_REVIEW.md`: authentication design and current limitations.
 
 Verify behavior against current source code when documentation and implementation differ. External links in these documents are background references; local code is the starting point for local changes.
@@ -117,7 +119,7 @@ $env:MAVEN_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.tru
 .\mvnw.cmd spring-boot:run
 ```
 
-`backend/start.ps1` checks source/resource, POM and Maven Wrapper content hashes and the packaged JAR before startup. It runs `clean package -DskipTests` on changes or a missing build cache/JAR; otherwise it starts the existing JAR immediately, with that certificate configuration. The first run creates the cache in `backend/target/`. Use `-Rebuild` to force a build. From `backend`:
+`backend/start.ps1` checks source/resource, POM and Maven Wrapper content hashes and the packaged JAR before startup. Before starting it hashes `src/main/resources/db/migration/*.sql` and, when that set differs from `backend/data/last-backup-schema.sha256` (or the file is missing), runs the root `backup.ps1` first and aborts the start if the backup fails; the stamp is saved only after a successful backup. It runs `clean package -DskipTests` on changes or a missing build cache/JAR; otherwise it starts the existing JAR immediately, with that certificate configuration. The first run creates the cache in `backend/target/`. Use `-Rebuild` to force a build. From `backend`:
 
 ```powershell
 .\start.ps1

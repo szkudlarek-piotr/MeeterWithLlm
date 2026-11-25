@@ -56,6 +56,36 @@ public class PeopleRanking {
           from contributions group by human_id
         )
         """;
+    // Shared interactions only: the account-linked Human and the target both take part. Visits score like meetings.
+    static final String SHARED_SCORES = """
+        with shared as (
+          select p.human_id,
+            case when v.id is not null then i.start_date when m.id is not null then i.start_date
+                 when e.id is not null then case when i.created_by_id=:ownerId
+                   then coalesce(e.me_leaving_date, i.end_date) else i.end_date end else i.end_date end as point_date,
+            case when v.id is not null then 3 when m.id is not null then 3 when e.id is not null then 1 else 3 end as weight,
+            case when v.id is not null then 360.0 when m.id is not null then 360.0 when e.id is not null then 180.0 else 3650.0 end as half_life
+          from interaction_human p join interactions i on i.id=p.interaction_id
+          left join visits v on v.id=i.id left join meetings m on m.id=i.id
+          left join events e on e.id=i.id left join trips t on t.id=i.id
+          where exists (select 1 from interaction_human self_link where self_link.interaction_id=i.id and self_link.human_id=:currentHumanId)
+            and exists (select 1 from interaction_human target_link where target_link.interaction_id=i.id and target_link.human_id=:targetId)
+            and p.human_id not in (:currentHumanId, :targetId)
+            and (v.id is not null or m.id is not null or e.id is not null or t.id is not null)
+          union all
+          -- Joker: an ongoing (not divorced) marriage gives the spouse a flat 40 points.
+          select case when w.groom_id=:targetId then w.bride_id else w.groom_id end,
+            cast(:today as date), 40, 1.0
+          from weddings w where (w.groom_id=:targetId or w.bride_id=:targetId) and w.is_divorced=false
+        ), shared_scores as (
+          select human_id,
+            sum(case when cast(point_date as date)<=:today
+                then round(power(0.5, timestampdiff(day, cast(point_date as date), :today)/half_life), 3)*weight
+                else 0 end) as points
+          from shared group by human_id
+        )
+        """;
+
     private record Row(long id, long visits, BigDecimal points) {}
     public List<Long> rankedCliqueIds(int page,int size) {
         var params=new HashMap<String,Object>();
@@ -93,6 +123,26 @@ public class PeopleRanking {
         }
         return result;
     }
+    /** People most often seen with the target, among interactions the account-linked Human also took part in. */
+    public List<ApiModels.HumanView> seenWith(Long targetId, int limit) {
+        var params=new HashMap<String,Object>();
+        params.put("ownerId",account.id());
+        params.put("today",LocalDate.now(ZoneId.of("Europe/Warsaw")));
+        params.put("currentHumanId",account.principal().humanId());
+        params.put("targetId",targetId);
+        params.put("limit",limit);
+        var ids=jdbc.query(SHARED_SCORES+"""
+            select h.id from shared_scores s join people h on h.id=s.human_id
+            where s.points > 0 and h.id <> :currentHumanId and h.id <> :targetId and not exists (select 1 from cliques hidden_clique where hidden_clique.id=h.clique_id
+              and lower(trim(hidden_clique.clique_name))='my_exes')
+            order by s.points desc, lower(coalesce(h.surname,'')), lower(h.name), h.id limit :limit
+            """,params,(rs,n)->rs.getLong("id"));
+        if(ids.isEmpty()) return List.of();
+        var byId=new HashMap<Long,Human>();
+        humans.findAllById(ids).forEach(h->byId.put(h.getId(),h));
+        return ids.stream().map(byId::get).map(ApiModels.HumanView::forBrowse).toList();
+    }
+
     public ApiModels.PeoplePage browse(String query, int page, int size, boolean directory) {
         var today=LocalDate.now(ZoneId.of("Europe/Warsaw"));
         String pattern="%"+query.trim().toLowerCase(Locale.ROOT).replace("!","!!").replace("%","!%").replace("_","!_")+"%";

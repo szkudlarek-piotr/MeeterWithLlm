@@ -146,6 +146,7 @@ class ApiIntegrationTests {
     @BeforeEach void clean() throws Exception {
         jdbc.update("delete from account_invitation_history");
         jdbc.update("delete from pending_registrations");
+        jdbc.update("delete from family_links"); // References app_users (creator) and people.
         Files.deleteIfExists(CREDENTIAL_FILE);
         humanSuperpower.deleteAll();
         superpowers.deleteAll();
@@ -1648,17 +1649,40 @@ class ApiIntegrationTests {
         assertEquals(0, places.count());
     }
 
-    @Test void loginIssuesCookieAndServerTokenForOneDay() throws Exception {
+    @Test void loginIssuesCookieAndServerTokenForOneWeek() throws Exception {
         var before=Instant.now();
         var login=request("POST","/auth/login","{\"username\":\""+username+"\",\"password\":\"test-password-123456\"}");
         var after=Instant.now();
         assertEquals(200,login.statusCode(),login.body());
-        assertTrue(login.headers().firstValue("set-cookie").orElseThrow().contains("Max-Age=86400"));
+        assertTrue(login.headers().firstValue("set-cookie").orElseThrow().contains("Max-Age=604800"));
         var token=tokens.findAll().getFirst();
-        assertFalse(token.getExpiresAt().isBefore(before.plusSeconds(86400)));
-        assertFalse(token.getExpiresAt().isAfter(after.plusSeconds(86400)));
+        assertFalse(token.getExpiresAt().isBefore(before.plusSeconds(604800)));
+        assertFalse(token.getExpiresAt().isAfter(after.plusSeconds(604800)));
         assertEquals(1,tokens.count());
         assertEquals(2,authEvents.count()); // Session replacement retains both successful logins.
+    }
+
+    @Test void familyLinksBuildTreeAndRejectCyclesAndDuplicates() throws Exception {
+        Human parent = people.save(new Human("Parent", "Family", null, null, null, null, null, null));
+        Human child = people.save(new Human("Child", "Family", null, null, null, null, null, null));
+        String link = "{\"type\":\"PARENT\",\"personAId\":" + parent.getId() + ",\"personBId\":" + child.getId() + "}";
+        assertEquals(201, request("POST", "/family/links", link).statusCode());
+        assertEquals(409, request("POST", "/family/links", link).statusCode());
+        assertEquals(400, request("POST", "/family/links", "{\"type\":\"PARENT\",\"personAId\":" + child.getId() + ",\"personBId\":" + parent.getId() + "}").statusCode());
+        assertEquals(400, request("POST", "/family/links", "{\"type\":\"SPOUSE\",\"personAId\":" + child.getId() + ",\"personBId\":" + child.getId() + "}").statusCode());
+        var tree = request("GET", "/people/browse/" + child.getId() + "/family", null);
+        assertEquals(200, tree.statusCode(), tree.body());
+        assertTrue(tree.body().contains("Parent Family"));
+    }
+
+    @Test void activeSessionSlidesExpiryForAnotherWeek() throws Exception {
+        var token=tokens.findAll().getFirst();
+        jdbc.update("update auth_tokens set expires_at=? where id=?",java.sql.Timestamp.from(Instant.now().plusSeconds(2*86400)),token.getId());
+        var response=HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/auth/me"))
+            .header("Cookie",loginCookie).GET().build(),HttpResponse.BodyHandlers.ofString());
+        assertEquals(200,response.statusCode(),response.body());
+        assertTrue(response.headers().firstValue("set-cookie").orElseThrow().contains("Max-Age=604800"));
+        assertFalse(tokens.findById(token.getId()).orElseThrow().getExpiresAt().isBefore(Instant.now().plusSeconds(6*86400)));
     }
 
     @Test void authHistorySurvivesTokenAndAccountDeletionWithoutStoringCredentials() throws Exception {

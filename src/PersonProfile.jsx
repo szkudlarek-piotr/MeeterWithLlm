@@ -4,9 +4,10 @@ import { PersonAvatar, ParticipantsEditor } from './CalendarPanel.jsx'
 import { interactionEntry } from './InteractionForm.jsx'
 import QuoteContent from './QuoteContent.jsx'
 import TripMap from './TripMap.jsx'
+import FamilyPanel from './FamilyPanel.jsx'
 import { t, tf, dateLocale } from './i18n.js'
 
-const sections = [['profile', t('Profil')], ['map', t('Mapa interakcji')], ['VISIT', t('Wizyty')], ['MEETING', t('Spotkania')], ['EVENT', t('Eventy')], ['TRIP', t('Podróże')], ['quotes', t('Cytaty')]]
+const sections = [['profile', t('Profil')], ['map', t('Mapa interakcji')], ['VISIT', t('Wizyty')], ['MEETING', t('Spotkania')], ['EVENT', t('Eventy')], ['TRIP', t('Podróże')], ['quotes', t('Cytaty')], ['family', t('Rodzina')]]
 const date = value => new Date(`${value.slice(0, 10)}T12:00:00`).toLocaleDateString(dateLocale())
 
 export function PhotoForm({ person, onSave, endpoint = `/people/${person.id}/photo` }) {
@@ -57,9 +58,14 @@ export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly,
   const [error, setError] = useState('')
   const [retry, setRetry] = useState(0)
   const [profileError, setProfileError] = useState('')
+  const [seenWith, setSeenWith] = useState(null)
+  const [seenWithError, setSeenWithError] = useState('')
   const [quoteRefresh, setQuoteRefresh] = useState(0)
   const [votingId, setVotingId] = useState(null)
   const [voteError, setVoteError] = useState('')
+  const [editing, setEditing] = useState(null)
+  const [editBusy, setEditBusy] = useState(false)
+  const [editError, setEditError] = useState('')
   const [superpowers, setSuperpowers] = useState([])
   const [dictionary, setDictionary] = useState([])
   const [selectedSuperpower, setSelectedSuperpower] = useState('')
@@ -69,6 +75,19 @@ export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly,
   const requestKey = `${person.id}:${section}:${page}:${retry}:${section === 'quotes' && publicQuotesOnly}`
   const refresh = section === 'quotes' ? quoteRefresh : 0
   const data = result?.key === requestKey ? result.data : null
+
+  async function saveQuoteEdit(event) {
+    event.preventDefault()
+    const text = editing.text.trim()
+    if (text.length < 4 || text.length > 10240) { setEditError(t('Cytat powinien mieć od 4 do 10240 znaków.')); return }
+    setEditBusy(true); setEditError('')
+    try {
+      await api(`/quotes/${editing.id}`, { method: 'PATCH', body: { quote: text } })
+      setEditing(null)
+      setQuoteRefresh(value => value + 1)
+    } catch (failure) { setEditError(failure.message) }
+    finally { setEditBusy(false) }
+  }
 
   async function voteForQuote(id, vote, retract) {
     setVotingId(id)
@@ -90,6 +109,14 @@ export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly,
       .catch(failure => { if (!controller.signal.aborted) setProfileError(failure.message) })
     return () => controller.abort()
   }, [person.id, retry])
+  useEffect(() => {
+    const controller = new AbortController()
+    setSeenWithError('')
+    api(`/people/browse/${person.id}/seen-with`, { signal: controller.signal })
+      .then(value => { if (!controller.signal.aborted) setSeenWith(value) })
+      .catch(failure => { if (!controller.signal.aborted) setSeenWithError(failure.message) })
+    return () => controller.abort()
+  }, [person.id])
   useEffect(() => {
     const controller = new AbortController()
     setSuperpowerError('')
@@ -136,7 +163,7 @@ export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly,
   }
   useEffect(() => {
     setError('')
-    if (section === 'profile') return
+    if (section === 'profile' || section === 'family') return
     const controller = new AbortController()
     setLoading(true)
     const path = section === 'map' ? 'map' : section === 'quotes' ? `quotes?page=${page}` : `interactions?type=${section}&page=${page}`
@@ -166,6 +193,13 @@ export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly,
           {person.clique.cliqueName}
         </dd></div>}
       </dl>
+      <section className="seen-with" aria-labelledby="person-seen-with-title">
+        <h3 id="person-seen-with-title">{t('Często widywani razem')}</h3>
+        {seenWithError && <p className="field-error" role="alert">{seenWithError}</p>}
+        {seenWith && (seenWith.length ? <ul className="seen-with-list">
+          {seenWith.map(member => <li key={member.id}><PersonAvatar person={member} /><span>{member.fullName}</span></li>)}
+        </ul> : <p className="field-hint">{t('Nie widziano jeszcze nikogo razem z tą osobą.')}</p>)}
+      </section>
       {superpowers.length > 0 && <ul className="superpower-icons" aria-label={t('people.superpowers')}>
         {superpowers.map(item => <li key={item.superpowerId} title={item.superpowerName} aria-label={item.superpowerName}>
           {item.photoUrl
@@ -195,18 +229,28 @@ export default function PersonProfile({ entry, onPersonChange, publicQuotesOnly,
       {profile?.canEditPhoto && <PhotoForm person={person} onSave={saved => { setPerson(saved); onPersonChange(saved) }} />}
       {profile && !profile.canEditPhoto && <p className="field-hint">{t('Zdjęcie może zmienić właściciel rekordu osoby lub administrator.')}</p>}
       {!profile && !profileError && <p role="status" className="field-hint">{t('Sprawdzanie uprawnień do zmiany zdjęcia…')}</p>}
-    </> : <>
+    </> : section === 'family' ? <FamilyPanel person={person} /> : <>
       {section === 'quotes' && <button type="button" className="public-quotes-toggle" aria-pressed={publicQuotesOnly}
         onClick={() => { setPage(0); setVoteError(''); onTogglePublicQuotes() }}>{t('Tylko publiczne cytaty')}</button>}
       {loading && !data && <p role="status">{t('Wczytywanie…')}</p>}
       {section === 'quotes' && voteError && <p className="field-error" role="alert">{voteError}</p>}
       {error && <p className="field-error" role="alert">{error} <button onClick={() => setRetry(value => value + 1)}>{t('Spróbuj ponownie')}</button></p>}
-      {data && (section === 'map' ? <><p className="field-hint">{t('Mapa wszystkich dostępnych wizyt, spotkań, eventów i podróży. Pokazujemy wyłącznie zapisane miejsca ze współrzędnymi.')}</p><TripMap places={data} title={t('Mapa interakcji')} emptyMessage={t('Brak dostępnych interakcji z miejscami na mapie.')} /></> : <>
+      {data && (section === 'map' ? <><p className="field-hint">{t('Mapa wszystkich dostępnych wizyt, spotkań, eventów, podróży i wesel. Pokazujemy wyłącznie zapisane miejsca ze współrzędnymi.')}</p><TripMap places={data} showList={false} title={t('Mapa interakcji')} emptyMessage={t('Brak dostępnych interakcji z miejscami na mapie.')} /></> : <>
         <p role="status">{tf('Liczba wyników: {total}', { total: data.totalElements })}</p>
         {!data.content.length && <p>{tf('Brak dostępnych {what}.', { what: section === 'quotes' ? t('cytatów') : t('interakcji') })}</p>}
         {data.content.map(item => section === 'quotes' ? <article className="card profile-entry person-public-quote" key={item.id}>
           <small>{item.isPublic ? t('PUBLICZNY CYTAT') : t('PRYWATNY CYTAT')}</small>
-          <QuoteContent quote={item.quote} tabIndex={0} />
+          {editing?.id === item.id ? <form className="quote-edit" onSubmit={saveQuoteEdit}>
+            <label htmlFor={`quote-edit-${item.id}`}>{t('Treść cytatu')}</label>
+            <textarea id={`quote-edit-${item.id}`} rows={5} required minLength={4} maxLength={10240} autoFocus disabled={editBusy}
+              value={editing.text} onChange={event => setEditing({ ...editing, text: event.target.value })} />
+            {editError && <p className="field-error" role="alert">{editError}</p>}
+            <button className="primary" disabled={editBusy}>{editBusy ? t('Zapisywanie…') : t('Zapisz zmiany')}</button>
+            <button type="button" className="text-button" disabled={editBusy} onClick={() => setEditing(null)}>{t('Anuluj edycję')}</button>
+          </form> : <>
+            <QuoteContent quote={item.quote} tabIndex={0} />
+            {item.canEdit && <button type="button" className="text-button" onClick={() => { setEditError(''); setEditing({ id: item.id, text: item.quote }) }}>{t('Edytuj cytat')}</button>}
+          </>}
           <div className="quote-vote" role="group" aria-label={t('Ocena cytatu')} aria-busy={votingId === item.id}>
             <button type="button" aria-label={item.myVote === 1 ? t('Cofnij plusa') : t('Daj plusa')} aria-pressed={item.myVote === 1}
               disabled={item.myVote === -1 || votingId != null || loading} onClick={() => voteForQuote(item.id, 'PLUS', item.myVote === 1)}>+</button>

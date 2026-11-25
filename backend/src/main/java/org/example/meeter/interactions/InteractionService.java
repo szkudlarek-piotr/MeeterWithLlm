@@ -3,6 +3,7 @@ package org.example.meeter.interactions;
 import static org.example.meeter.interactions.InteractionModels.*;
 import java.time.*;
 import java.util.*;
+import java.util.stream.Stream;
 import org.example.meeter.*;
 import org.example.meeter.auth.*;
 import org.example.meeter.photos.*;
@@ -294,7 +295,8 @@ public class InteractionService {
     }
 
     // Profile reads additionally support administrator visibility.
-    private Specification<Interaction> profileFilter(Long personId, InteractionType type) {
+    private Specification<Interaction> profileFilter(Long personId, InteractionType type) { return profileFilter(personId, type, false); }
+    private Specification<Interaction> profileFilter(Long personId, InteractionType type, boolean withWeddings) {
         Long viewer = account.principal().humanId();
         boolean admin = account.isAdmin();
         Long owner = account.id();
@@ -306,7 +308,8 @@ public class InteractionService {
             var ownLink = member.from(InteractionParticipant.class);
             member.select(ownLink.get("id")).where(cb.equal(ownLink.get("interaction"), root), cb.equal(ownLink.get("human").get("id"), viewer));
             var allowed = admin ? cb.conjunction() : cb.or(cb.equal(root.get("createdBy").get("id"), owner), cb.exists(member));
-            var supported = root.type().in(Meeting.class, Visit.class, Event.class, Citybreak.class);
+            var supported = withWeddings ? root.type().in(Meeting.class, Visit.class, Event.class, Citybreak.class, Wedding.class)
+                : root.type().in(Meeting.class, Visit.class, Event.class, Citybreak.class);
             if (type != null) supported = cb.equal(root.type(), switch (type) {
                 case MEETING -> Meeting.class; case VISIT -> Visit.class; case EVENT -> Event.class; case TRIP -> Citybreak.class;
                 default -> Interaction.class;
@@ -328,8 +331,10 @@ public class InteractionService {
     public record MapPoint(Long id, String name, double latitude, double longitude, String category) {}
     public List<MapPoint> personMap(Long personId) {
         Map<Long, MapPoint> points = new LinkedHashMap<>();
-        for (Interaction item : interactions.findAll(profileFilter(personId, null), Sort.by("startDate", "id"))) {
-            Collection<Place> locations = item instanceof Citybreak trip ? trip.getPlaces() : item.getPlace() == null ? List.of() : List.of(item.getPlace());
+        for (Interaction item : interactions.findAll(profileFilter(personId, null, true), Sort.by("startDate", "id"))) {
+            Collection<Place> locations = item instanceof Citybreak trip ? trip.getPlaces()
+                : item instanceof Wedding wedding ? Stream.of(wedding.getCeremonyPlace(), wedding.getPartyPlace(), wedding.getHotel()).filter(Objects::nonNull).toList()
+                : item.getPlace() == null ? List.of() : List.of(item.getPlace());
             for (Place location : locations) points.putIfAbsent(location.getId(), new MapPoint(location.getId(), location.getName(), location.getLatitude(), location.getLongitude(), location.getCategory()));
         }
         return new ArrayList<>(points.values());

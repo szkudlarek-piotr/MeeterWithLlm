@@ -7,6 +7,7 @@ The `org.example.meeter.quote` module contains `Quote`, `QuoteRepository`, `Quot
 Suggestions from `GET /api/quotes/authors` are sorted in descending order by the number of quotes visible to the current account (public quotes, private quotes of the author matched by Human ID, and all quotes for an administrator). Private quotes by others do not affect the order for an ordinary account; quotes without an author do not raise any result. Ties are broken by surname, first name and ID. Searching, excluding `my_exes` and sorting all happen before LIMIT. People without quotes can still be selected. Counts are not returned in the suggestions.
 
 - `POST /api/quotes`: creates a quote; response 201.
+- `PATCH /api/quotes/{id}`: changes the quote text (`{quote}`, 4–10240 characters after trimming). Only the quote's author (the account-linked person), the account that created the quote, or an administrator may do it; anyone else gets 404. Requires CSRF. Author and visibility are unchanged (visibility has its own endpoint). Author-page items carry `canEdit`, which the person dialog uses to show "Edit quote".
 - `GET /api/quotes/{id}`: an available quote, or 404 for a non-existent or inaccessible ID.
 
 The separate collection endpoint `GET /api/quotes` has been removed. Quotes are presented on people's cards and in the game.

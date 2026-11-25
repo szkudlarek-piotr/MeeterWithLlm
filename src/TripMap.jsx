@@ -33,7 +33,7 @@ function categoryMarker(place) {
 const validPoint = place => Number.isFinite(place.latitude) && Number.isFinite(place.longitude)
   && Math.abs(place.latitude) <= 90 && Math.abs(place.longitude) <= 180
 
-export default function TripMap({ places = [], title = t('Miejsca na trasie'), emptyMessage = t('Dodaj miejsca ze współrzędnymi, aby zobaczyć mapę podróży.') }) {
+export default function TripMap({ places = [], title = t('Miejsca na trasie'), emptyMessage = t('Dodaj miejsca ze współrzędnymi, aby zobaczyć mapę podróży.'), showList = true }) {
   const container = useRef(null)
   const [tileError, setTileError] = useState(false)
   const uniquePlaces = [...new Map(places.map(place => [place.id, place])).values()]
@@ -73,6 +73,6 @@ export default function TripMap({ places = [], title = t('Miejsca na trasie'), e
       <div ref={container} className="trip-map" role="region" aria-label={title} />
       {tileError && <p className="field-hint" role="status">{t('Nie udało się pobrać części mapy. Miejsca znajdziesz na liście poniżej.')}</p>}
     </> : <p className="field-hint">{emptyMessage}</p>}
-    {uniquePlaces.length > 0 && <MapPlaces>{uniquePlaces.map(place => <li key={place.id}>{placeLabel(place)}</li>)}</MapPlaces>}
+    {showList && uniquePlaces.length > 0 && <MapPlaces>{uniquePlaces.map(place => <li key={place.id}>{placeLabel(place)}</li>)}</MapPlaces>}
   </section>
 }
