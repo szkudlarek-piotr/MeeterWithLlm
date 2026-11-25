@@ -11,7 +11,7 @@ public class AuthToken {
     private Long id;
     @Column(nullable = false, unique = true, updatable = false, length = 64)
     private String tokenHash;
-    @Column(name = "expires_at", nullable = false, updatable = false)
+    @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     private User owner;
