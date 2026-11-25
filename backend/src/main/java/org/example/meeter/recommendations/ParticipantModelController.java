@@ -17,13 +17,14 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional(readOnly = true)
 public class ParticipantModelController {
     public record Input(
-        @NotBlank @Pattern(regexp="(context|guests)_(logistic|extra_trees|boosting)") String model,
+        @NotBlank @Pattern(regexp="(context|guests)_(logistic|extra_trees|boosting|neural)") String model,
         @NotBlank @Size(min=2,max=128) String name,
         @Size(max=200) String placeText,
         @NotNull @Size(max=100) List<@NotNull @Positive Long> placeIds,
         @NotNull @Size(max=200) List<@NotNull @Positive Long> guestIds,
         @Positive Long interactionId,
-        java.time.LocalDate startDate) {}
+        java.time.LocalDate startDate,
+        @Pattern(regexp="MEETING|VISIT|EVENT|TRIP|WEDDING|FLATMATE") String type) {}
     private final ParticipantModelClient models;
     private final CurrentAccount account;
     private final PlaceRepository places;
@@ -74,6 +75,7 @@ public class ParticipantModelController {
         var queryDate = input.startDate() != null ? input.startDate()
             : current != null ? current.getStartDate().toLocalDate() : java.time.LocalDate.now();
         query.put("start_date", queryDate.toString());
+        if (input.type() != null) query.put("type", input.type());
         var ids = models.suggest(query);
         // Same all-Human scope and minimal DTO as the participant picker; no admin bypass.
         var found = new HashMap<Long,Human>();

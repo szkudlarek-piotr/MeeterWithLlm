@@ -28,6 +28,7 @@ def diagnostic(stage, error=None, started=None):
         message += " frames=" + " > ".join(frames)
     print(message, file=sys.stderr, flush=True)
 
+import neural
 import recommend
 
 # CLI-trained joblib files refer to __main__.History, not recommend.History.
@@ -35,6 +36,8 @@ sys.modules["__main__"].History = recommend.History
 
 MODEL_IDS = tuple(f"{mode}_{model}" for mode in ("context", "guests")
                   for model in ("logistic", "extra_trees", "boosting"))
+# Per-account network trained online from the request history: needs no artifact, always offered, default.
+NEURAL_IDS = ("context_neural", "guests_neural")
 
 
 class Worker:
@@ -48,11 +51,13 @@ class Worker:
                     self.encoders[key] = self.encoder_factory(*key)
                     self.encoders[key].encode([{"name": "", "places": []}])
 
-    def __init__(self, directory, loader=None, encoder_factory=None):
+    def __init__(self, directory, loader=None, encoder_factory=None, train_budget=neural.TRAIN_BUDGET_SECONDS):
+        self.train_budget = train_budget
         self.directory = Path(directory)
         self.bundles = {}
         self.encoders = {}
         self.history_cache = OrderedDict()
+        self.neural = OrderedDict()
         if loader is None:
             import joblib
             loader = joblib.load
@@ -73,14 +78,8 @@ class Worker:
         return self.bundles[model_id]
 
     def models(self, account_id, self_id):
-        result = []
-        recommended = None
-        report = self.directory / "shared_metrics.json"
-        if report.is_file():
-            try:
-                recommended = json.loads(report.read_text(encoding="utf-8")).get("recommended_model")
-            except (ValueError, OSError):
-                pass  # Missing report must not disable otherwise valid models.
+        # The online neural model is the default; trained shared models stay selectable, not recommended.
+        result = [{"id": model_id, "mode": model_id.split('_', 1)[0], "recommended": True} for model_id in NEURAL_IDS]
         for model_id in MODEL_IDS:
             if not ((self.directory / (model_id + ".joblib")).is_file()
                     or (self.directory / ("shared_" + model_id.split('_', 1)[1] + ".joblib")).is_file()):
@@ -88,10 +87,47 @@ class Worker:
             bundle = self.bundle(model_id)
             if bundle.get("scope") == "shared" or (bundle["account_id"] == account_id and bundle["self_id"] == self_id):
                 result.append({"id": model_id, "mode": model_id.split('_', 1)[0],
-                               "recommended": bundle.get("scope") == "shared" and model_id.split('_', 1)[1] == recommended})
+                               "recommended": False})
         return {"models": result}
 
+    def online_ranker(self, account_id, self_id):
+        key = (int(account_id), int(self_id))
+        if key not in self.neural:
+            path = self.directory / "online" / f"account-{key[0]}-human-{key[1]}.pt"
+            self.neural[key] = neural.OnlineRanker(path, seed=key[0])
+        self.neural.move_to_end(key)
+        while len(self.neural) > 8:
+            self.neural.popitem(last=False)
+        return self.neural[key]
+
+    def train_neural(self, request):
+        """Learns new or changed interactions without ranking. Used by the backend's scheduled catch-up."""
+        self_id = request["self_id"]
+        rows = request["history"]  # Only the authenticated backend constructs this field.
+        if not isinstance(rows, list):
+            raise ValueError()
+        rows = [{**row, "participants": sorted(set(row["participants"]) - {self_id})} for row in rows]
+        ranker = self.online_ranker(request["account_id"], self_id)
+        started = time.monotonic()
+        trained = ranker.update(rows, budget_seconds=self.train_budget)
+        if trained:
+            diagnostic(f"neural-update-completed rows={trained}", started=started)
+        return rows, ranker, trained
+
+    def suggest_neural(self, request):
+        self_id = request["self_id"]
+        guests = set(request["guest_ids"]) - {self_id}
+        k = request.get("k", 10)
+        if not isinstance(k, int) or not 1 <= k <= 20 or len(guests) > 200 or not isinstance(request["history"], list):
+            raise ValueError()
+        rows, ranker, _ = self.train_neural(request)
+        # Context mode ignores guests as evidence, but still excludes the people already selected.
+        evidence = guests if request["model"].startswith("guests_") else set()
+        return {"human_ids": ranker.rank(rows, request, evidence, k, exclude=guests | {self_id})}
+
     def suggest(self, request):
+        if request["model"] in NEURAL_IDS:
+            return self.suggest_neural(request)
         bundle = self.bundle(request["model"])
         shared = bundle.get("scope") == "shared"
         if not shared and (bundle["account_id"] != request["account_id"] or bundle["self_id"] != request["self_id"]):
@@ -171,6 +207,10 @@ def handler(worker, token):
                     stage = "models"
                     diagnostic(stage + "-started")
                     result = worker.models(request["account_id"], request["self_id"])
+                elif self.path == "/train":
+                    stage = "train"
+                    diagnostic(stage + "-started")
+                    result = {"trained": worker.train_neural(request)[2]}
                 elif self.path == "/suggest":
                     stage = "suggest"
                     diagnostic(stage + "-started")

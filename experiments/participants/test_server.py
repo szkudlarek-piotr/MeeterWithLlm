@@ -34,6 +34,11 @@ class WorkerTests(unittest.TestCase):
         self.assertNotIn(secret, output.getvalue())
         self.assertNotIn('raise ValueError', output.getvalue())
 
+    @staticmethod
+    def trained_models(worker, account, self_id):
+        # The online neural models are always offered; these tests cover artifact-backed ones.
+        return [m for m in worker.models(account, self_id)["models"] if not m["id"].endswith("_neural")]
+
     def setUp(self):
         history = History()
         history.add({"participants": [1, 2, 3]}, np.array([1., 0.]))
@@ -70,8 +75,8 @@ class WorkerTests(unittest.TestCase):
 
     def test_models_are_scoped_to_account_and_encoder_is_cached(self):
         with patch("pathlib.Path.is_file", lambda path: path.name == "context_logistic.joblib"):
-            self.assertEqual(len(self.worker.models(10, 1)["models"]), 1)
-            self.assertEqual(self.worker.models(11, 1), {"models": []})
+            self.assertEqual(len(self.trained_models(self.worker, 10, 1)), 1)
+            self.assertEqual(self.trained_models(self.worker, 11, 1), [])
         self.worker.suggest(self.request)
         first = self.worker.encoders.copy()
         self.worker.suggest(self.request)
@@ -81,8 +86,8 @@ class WorkerTests(unittest.TestCase):
         shared = {"scope": "shared", "schema_version": 2, "model": Model(), "encoder": "fake", "revision": "fake"}
         self.worker = Worker(".", loader=lambda _: shared, encoder_factory=Encoder)
         with patch("pathlib.Path.is_file", lambda path: path.name == "shared_logistic.joblib"):
-            self.assertEqual(len(self.worker.models(10, 1)["models"]), 2)
-            self.assertEqual(len(self.worker.models(11, 2)["models"]), 2)
+            self.assertEqual(len(self.trained_models(self.worker, 10, 1)), 2)
+            self.assertEqual(len(self.trained_models(self.worker, 11, 2)), 2)
             first = {**self.request, "history": [{"participants": [1, 2, 3], "places": []}]}
             second = {**first, "account_id": 11, "self_id": 2,
                       "history": [{"participants": [2, 99], "places": []}]}
@@ -92,12 +97,26 @@ class WorkerTests(unittest.TestCase):
             # Both modes reference the same estimator, not a duplicate artifact.
             self.assertIs(self.worker.bundle("context_logistic"), self.worker.bundle("guests_logistic"))
 
-    def test_recommended_algorithm_is_read_without_loading_training_data(self):
+    def test_neural_is_the_recommended_default_and_shared_models_stay_listed(self):
         shared = {"scope": "shared"}
         worker = Worker(".", loader=lambda _: shared, encoder_factory=Encoder)
-        with patch("pathlib.Path.is_file", lambda path: path.name in {"shared_metrics.json", "shared_logistic.joblib"}), \
-                patch("pathlib.Path.read_text", return_value='{"recommended_model":"logistic"}'):
-            self.assertTrue(all(model["recommended"] for model in worker.models(10, 1)["models"]))
+        with patch("pathlib.Path.is_file", lambda path: path.name == "shared_logistic.joblib"):
+            models = worker.models(10, 1)["models"]
+            trained = self.trained_models(worker, 10, 1)
+        self.assertEqual([m["id"] for m in models if m["recommended"]], ["context_neural", "guests_neural"])
+        self.assertFalse(any(model["recommended"] for model in trained))
+        self.assertEqual(len(trained), 2)
+
+    def test_train_neural_learns_new_rows_once(self):
+        import tempfile
+        rows = [{"id": n, "name": "Spacer", "place_text": "", "start_date": f"2020-01-{n:02d}", "type": "MEETING",
+                 "participants": [3, 4] if n % 2 else [3], "places": []} for n in range(1, 9)]
+        with tempfile.TemporaryDirectory() as directory:
+            worker = Worker(directory, train_budget=5)
+            request = {"account_id": 1, "self_id": 2, "history": rows}
+            first = worker.train_neural(request)[2]
+            self.assertEqual(8, first)
+            self.assertEqual(0, worker.train_neural(request)[2])
 
 
 if __name__ == "__main__":

@@ -5,21 +5,19 @@ import PersonAvatar from './PersonAvatar.jsx'
 import { t } from './i18n.js'
 
 const algorithms = { logistic: 'Regresja logistyczna', extra_trees: 'Extra Trees', boosting: 'Boosting' }
+const algorithmOf = id => id.replace(/^(context|guests)_/, '')
 // The model service loads its weights on start-up, so the first list request can fail or come back empty.
 // Retry with backoff instead of leaving the picker stuck on "no models" until the user clicks.
 const LIST_RETRY_DELAY_MS = 1000
 const LIST_MAX_ATTEMPTS = 6
 
-function modelLabel(model) {
-  const algorithm = model.id.replace(/^(context|guests)_/, '')
-  const mode = model.mode === 'guests' ? t('recommendations.modeGuests') : t('recommendations.modeContext')
-  return `${algorithms[algorithm] || algorithm} · ${mode}${model.recommended ? ` · ${t('recommendations.recommended')}` : ''}`
-}
+const algorithmLabel = (algorithm, recommended) =>
+  `${algorithm === 'neural' ? t('recommendations.algorithmNeural') : algorithms[algorithm] || algorithm}${recommended ? ` · ${t('recommendations.recommended')}` : ''}`
 
-export default function ParticipantRecommendations({ name, startDate, placeText = '', places = [], guests = [], onSelect, interactionId }) {
+export default function ParticipantRecommendations({ type, name, startDate, placeText = '', places = [], guests = [], onSelect, interactionId }) {
   const id = useId()
   const [models, setModels] = useState([])
-  const [model, setModel] = useState(null)
+  const [algorithm, setAlgorithm] = useState(null)
   const [listError, setListError] = useState('')
   const [listLoading, setListLoading] = useState(true)
   const [listRetrying, setListRetrying] = useState(false)
@@ -29,7 +27,11 @@ export default function ParticipantRecommendations({ name, startDate, placeText 
   const request = useRef(null)
   const guestIds = [...new Set(guests.map(person => person.id))].sort()
   const placeIds = [...new Set(places.map(place => place.id))]
-  const body = { model, name: name.trim(), startDate: startDate?.slice(0, 10) || undefined, placeText: placeText.trim(), placeIds, guestIds, ...(interactionId ? { interactionId } : {}) }
+  // The mode follows the form: no people yet → name/place only; from the first person → also the selected people.
+  const mode = guestIds.length ? 'guests' : 'context'
+  const model = !algorithm ? '' : [`${mode}_${algorithm}`, `${mode === 'guests' ? 'context' : 'guests'}_${algorithm}`].find(id => models.some(item => item.id === id)) || ''
+  const algorithmChoices = [...new Set(models.map(item => algorithmOf(item.id)))]
+  const body = { model, ...(type ? { type } : {}), name: name.trim(), startDate: startDate?.slice(0, 10) || undefined, placeText: placeText.trim(), placeIds, guestIds, ...(interactionId ? { interactionId } : {}) }
   const key = JSON.stringify(body)
   const current = result?.key === key ? result : null
   const busy = busyKey === key
@@ -50,8 +52,8 @@ export default function ParticipantRecommendations({ name, startDate, placeText 
       setListError(error)
       setListRetrying(false)
       setListLoading(false)
-      setModel(previous => previous === '' || items.some(item => item.id === previous) ? previous
-        : (items.find(item => item.recommended && item.mode === 'guests') || items.find(item => item.mode === 'guests') || items[0])?.id || '')
+      setAlgorithm(previous => previous === '' || items.some(item => algorithmOf(item.id) === previous) ? previous
+        : (items.find(item => item.recommended) || items[0]) ? algorithmOf((items.find(item => item.recommended) || items[0]).id) : '')
     }
     function load() {
       api('/participant-models', { signal: controller.signal })
@@ -99,13 +101,13 @@ export default function ParticipantRecommendations({ name, startDate, placeText 
   return <section className="participant-recommendations" aria-label={t('recommendations.section')}>
     <label htmlFor={id}>{t('recommendations.label')} <small>· {t('recommendations.experimental')}</small></label>
     <div className="recommendation-controls">
-      <select id={id} value={model || ''} disabled={listLoading} onChange={event => { setModel(event.target.value); setResult(null) }}>
+      <select id={id} value={algorithm || ''} disabled={listLoading} onChange={event => { setAlgorithm(event.target.value); setResult(null) }}>
         <option value="">{listLoading ? t('recommendations.loading') : t('recommendations.disabled')}</option>
-        {models.map(item => <option key={item.id} value={item.id}>{modelLabel(item)}</option>)}
+        {algorithmChoices.map(item => <option key={item} value={item}>{algorithmLabel(item, models.some(entry => entry.recommended && algorithmOf(entry.id) === item))}</option>)}
       </select>
       <button type="button" disabled={!model || body.name.length < 2 || busy} onClick={suggest}>{busy ? t('recommendations.suggestBusy') : t('recommendations.suggest')}</button>
     </div>
-    {model && <p className="field-hint">{model.startsWith('guests_') ? t('recommendations.hintGuests') : t('recommendations.hintContext')} {t('recommendations.hintAuto')}</p>}
+    {model && <p className="field-hint">{model.startsWith('guests_') ? t('recommendations.hintGuests') : t('recommendations.hintContext')} {t('recommendations.hintSwitch')} {t('recommendations.hintAuto')}</p>}
     {listRetrying && <p className="field-hint" role="status">{t('recommendations.retrying')}</p>}
     {!listLoading && !listRetrying && (listError || !models.length) && <p className="field-hint" role="status">{listError || t('recommendations.noModels')} <button type="button" className="text-button" onClick={() => setReload(value => value + 1)}>{t('recommendations.recheck')}</button></p>}
     <div aria-live="polite" aria-busy={busy}>
