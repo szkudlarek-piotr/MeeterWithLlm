@@ -1,0 +1,40 @@
+# Nazwa projektu stała, żeby wolumen to meeter_meeter-photos niezależnie od nazwy katalogu.
+name: meeter
+
+# Uruchamiane na VPS. Baza meeter-mariadb jest poza tym plikiem
+# i już działa; sieci tworzymy raz ręcznie (patrz README wdrożenia).
+
+networks:
+  meeter-backend:
+    external: true
+  meeter-frontend:
+    external: true
+
+volumes:
+  meeter-photos:
+
+services:
+  backend:
+    build: ../backend
+    image: meeter-backend:latest
+    env_file: .env
+    environment:
+      DB_URL: jdbc:mariadb://meeter-mariadb:3306/meeter
+      MEETER_RECOMMENDER_AUTOSTART: "false"
+    volumes:
+      - meeter-photos:/app/data/photos
+    networks:
+      - meeter-backend   # dostęp do bazy
+      - meeter-frontend  # dostęp dla nginx
+    restart: unless-stopped
+
+  frontend:
+    build: ../frontend
+    image: meeter-frontend:latest
+    ports:
+      - "127.0.0.1:8080:80"   # tylko loopback; zewnętrzny HTTPS dojdzie osobno
+    networks:
+      - meeter-frontend
+    depends_on:
+      - backend
+    restart: unless-stopped

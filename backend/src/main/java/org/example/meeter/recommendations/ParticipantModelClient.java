@@ -18,6 +18,7 @@ public class ParticipantModelClient {
         public Model(String id, String mode) { this(id, mode, false); }
     }
     public record Models(List<Model> models) {}
+    public record Trained(int trained) {}
     public record Suggestions(List<Long> human_ids) {}
     private final RestClient client;
     private final ParticipantModelWorker worker;
@@ -50,6 +51,15 @@ public class ParticipantModelClient {
                 throw new IllegalStateException();
             return response.human_ids();
         } catch (Exception exception) { diagnose("suggest", exception); throw unavailable(); }
+    }
+
+    /** Learns new interactions in the worker without ranking. Returns how many were learned; 0 means up to date. */
+    public int train(Map<String, Object> request) {
+        if (!worker.enabled()) return 0;
+        try {
+            var response = post("/train", request).retrieve().body(Trained.class);
+            return response == null ? 0 : response.trained();
+        } catch (Exception exception) { diagnose("train", exception); return 0; }
     }
 
     private RestClient.RequestHeadersSpec<?> post(String path, Map<String, ?> request) {

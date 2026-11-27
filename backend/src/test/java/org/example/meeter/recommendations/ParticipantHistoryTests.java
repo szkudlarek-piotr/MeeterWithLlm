@@ -16,6 +16,8 @@ class ParticipantHistoryTests {
             sql.execute("create table interactions(id bigint,name varchar,created_by_id bigint,place_id bigint,start_date timestamp)");
             sql.execute("create table meetings(id bigint,place_string varchar)");
             sql.execute("create table events(id bigint,place_string varchar)");
+            sql.execute("create table visits(id bigint)");
+            sql.execute("create table trips(id bigint)");
             sql.execute("create table interaction_human(interaction_id bigint,human_id bigint)");
             sql.execute("create table trip_place(trip_id bigint,place_id bigint)");
             sql.execute("create table weddings(id bigint,ceremony_place_id bigint,party_place_id bigint,hotel_id bigint)");
@@ -30,6 +32,8 @@ class ParticipantHistoryTests {
             var rows = source.rows(10L, 100L);
             assertEquals(1, rows.size());
             assertEquals("Own", rows.getFirst().get("name"));
+            assertEquals(1L, rows.getFirst().get("id"));
+            assertEquals("MEETING", rows.getFirst().get("type"));
             assertEquals("Text place", rows.getFirst().get("place_text"));
             assertEquals("2026-01-19", rows.getFirst().get("start_date"));
             assertEquals(List.of(101L), rows.getFirst().get("participants"));

@@ -79,12 +79,45 @@ public class QuoteService {
     }
 
     public record AuthorPage(java.util.List<RankedView> content, int page, int size, long totalElements, boolean hasNext) {}
+    /** Every quote in which the signed-in person is the author, whoever created it. */
+    public AuthorPage mine(int page, int size) {
+        Long self = account.principal().humanId();
+        if (self == null) return new AuthorPage(java.util.List.of(), page, size, 0, false);
+        return forAuthor(self, page, size, false);
+    }
+
+    /** Only the quote's author (or an administrator) can change whether it is public. */
+    @Transactional public View setVisibility(Long id, boolean value) {
+        Quote quote = quotes.lockById(id).orElseThrow(QuoteService::missing);
+        Long self = account.principal().humanId();
+        boolean isAuthor = self != null && quote.getAuthor() != null && self.equals(quote.getAuthor().getId());
+        if (!isAuthor && !account.isAdmin()) throw missing();
+        quote.changeVisibility(value);
+        return view(quote);
+    }
+
     public AuthorPage forAuthor(Long authorId, int page, int size, boolean publicOnly) {
         boolean seePrivate = !publicOnly && (account.isAdmin() || authorId.equals(account.principal().humanId()));
         var result = quotes.rankedByAuthor(authorId, seePrivate, account.id(), PageRequest.of(page, size));
         return new AuthorPage(result.stream()
-            .map(row -> RankedView.of(view(row.getQuote()), row.getScore(), row.getMyVote()))
+            .map(row -> RankedView.of(view(row.getQuote()), row.getScore(), row.getMyVote(), canEdit(row.getQuote())))
             .toList(), page, size, result.getTotalElements(), result.hasNext());
+    }
+    private boolean canEdit(Quote quote) {
+        Long self = account.principal().humanId();
+        boolean isAuthor = self != null && quote.getAuthor() != null && self.equals(quote.getAuthor().getId());
+        boolean isCreator = quote.getCreatedBy() != null && quote.getCreatedBy().getId().equals(account.id());
+        return account.isAdmin() || isAuthor || isCreator;
+    }
+    /** The quote's author, the account that created it, or an administrator can change its text. */
+    @Transactional public View edit(Long id, String text) {
+        Quote quote = quotes.lockById(id).orElseThrow(QuoteService::missing);
+        if (!canEdit(quote)) throw missing();
+        String clean = text.strip();
+        if (clean.length() < 4 || clean.length() > 10240)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cytat powinien mieć od 4 do 10240 znaków.");
+        quote.changeText(clean);
+        return view(quote);
     }
     private View view(Quote quote) {
         View result = View.of(quote);

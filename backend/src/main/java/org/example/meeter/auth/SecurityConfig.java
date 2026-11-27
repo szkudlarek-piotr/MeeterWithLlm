@@ -43,7 +43,7 @@ public class SecurityConfig {
                 .accessDeniedHandler((request, response, error) -> { response.setStatus(403); response.setContentType("application/json;charset=UTF-8"); response.getWriter().write("{\"detail\":\"Brak uprawnień lub nieprawidłowy token CSRF.\"}"); }))
             // Uwierzytelnienie z trwałego tokenu nie jest nowym logowaniem na każde żądanie.
             // Uruchamiamy je po zarządzaniu sesją, przed decyzją autoryzacyjną.
-            .addFilterBefore(new TokenAuthenticationFilter(auth), AuthorizationFilter.class);
+            .addFilterBefore(new TokenAuthenticationFilter(auth, secure), AuthorizationFilter.class);
         return http.build();
     }
 }

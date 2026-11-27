@@ -10,8 +10,16 @@ public final class ApiModels {
   @Size(max=2048) @Pattern(regexp="(?i)^https?://[^\\s]+$",message="Podaj adres HTTP lub HTTPS.") String fbLink,
   @Size(max=1) String gender,@Size(max=200) String livesIn) {}
  public record LastSeenView(long daysAgo,String interactionName) {}
- public record PersonProfileView(HumanView person,boolean canEditPhoto,LastSeenView lastSeen) {}
- public record PersonBrowseView(HumanView person,long visitCount,PublicQuoteView publicQuote) {}
+ public record PersonProfileView(HumanView person,boolean canEditPhoto,boolean canEditSuperpowers,LastSeenView lastSeen,CliqueIcon cliqueIcon) {}
+ public record CliqueIcon(String photoUrl) {
+  static CliqueIcon forViewer(Clique clique,Long viewerId) {
+   if (clique==null || clique.getCreatedBy()==null || !viewerId.equals(clique.getCreatedBy().getId())) return null;
+   var photo=clique.getPhoto();
+   if (photo==null || photo.getPhotoType()!=org.example.meeter.multimedia.photo.PhotoType.CLIQUE) return null;
+   return new CliqueIcon("/api/cliques/"+clique.getId()+"/photo?v="+photo.getUuid());
+  }
+ }
+ public record PersonBrowseView(HumanView person,long visitCount,PublicQuoteView publicQuote,CliqueIcon cliqueIcon) {}
  public record PeoplePage(java.util.List<PersonBrowseView> content,int page,int size,long totalElements,boolean hasNext) {}
  public record PlaceInput(@NotBlank @Size(max=200) String name,
   @NotNull @DecimalMin("-90") @DecimalMax("90") Double latitude,
@@ -29,7 +37,7 @@ public final class ApiModels {
   static CliqueView of(Clique c) { return c==null?null:new CliqueView(c.getId(),c.getCliqueName(),PlaceView.of(c.getCliqueCapital())); }
  }
  public record HumanView(Long id,UUID uuid,String name,String surname,String fullName,LocalDate birthdayDate,String fbLink,String gender,String livesIn,PlaceView home,CliqueView clique,String profilePhotoUrl,boolean demo) {
-  static HumanView forBrowse(Human h) {
+  public static HumanView forBrowse(Human h) {
    var value=of(h);
    return new HumanView(value.id(),value.uuid(),value.name(),value.surname(),value.fullName(),value.birthdayDate(),value.fbLink(),value.gender(),value.livesIn(),value.home(),value.clique(),value.profilePhotoUrl()==null?null:value.profilePhotoUrl().replace("/api/people/","/api/people/browse/"),value.demo());
   }

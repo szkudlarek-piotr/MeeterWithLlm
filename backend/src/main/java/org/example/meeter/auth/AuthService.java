@@ -18,9 +18,12 @@ public class AuthService {
     private final LoginThrottle throttle;
     private final AuthAudit audit;
     private final String dummyHash;
-    public static final long LIFETIME_SECONDS = 24 * 60 * 60;
+    public static final long LIFETIME_SECONDS = 7 * 24 * 60 * 60;
+    // Use moves expiry to a full lifetime ahead, but at most once per interval, so requests do not all write to the database.
+    public static final long RENEW_INTERVAL_SECONDS = 60 * 60;
     private static final SecureRandom RANDOM = new SecureRandom();
     public record LoginResult(String rawToken, CurrentAccount.Principal user) {}
+    public record Authentication(CurrentAccount.Principal principal, boolean renewed) {}
 
     public AuthService(UserRepository users, TokenRepository tokens, PasswordEncoder encoder, LoginThrottle throttle, AuthAudit audit) {
         this.users = users; this.tokens = tokens; this.encoder = encoder; this.throttle = throttle;
@@ -52,10 +55,17 @@ public class AuthService {
         return new LoginResult(raw, CurrentAccount.of(user));
     }
 
-    @Transactional(readOnly = true)
-    public Optional<CurrentAccount.Principal> authenticate(String raw) {
+    /** Not transactional on purpose: the renewal runs in its own short transaction, so parallel requests cannot conflict. */
+    public Optional<Authentication> authenticate(String raw) {
         if (!valid(raw)) return Optional.empty();
-        return tokens.findByTokenHashAndExpiresAtAfter(hash(raw), Instant.now()).map(token -> CurrentAccount.of(token.getOwner()));
+        Instant now = Instant.now();
+        Instant renewedExpiry = now.plusSeconds(LIFETIME_SECONDS);
+        return tokens.findByTokenHashAndExpiresAtAfter(hash(raw), now).map(token -> {
+            boolean renewed = false;
+            try { renewed = tokens.renew(token.getId(), renewedExpiry, renewedExpiry.minusSeconds(RENEW_INTERVAL_SECONDS)) > 0; }
+            catch (RuntimeException ignored) { /* another request is renewing this token right now; the login stays valid */ }
+            return new Authentication(CurrentAccount.of(token.getOwner()), renewed);
+        });
     }
     @Transactional
     public void revoke(String raw) { if (valid(raw)) tokens.deleteByTokenHash(hash(raw)); }

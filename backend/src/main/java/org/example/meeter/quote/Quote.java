@@ -30,6 +30,12 @@ public class Quote extends OwnedEntity {
     @Column(nullable = false, unique = true, updatable = false)
     private UUID uuid = UUID.randomUUID();
 
+    /** Only the quote's author or an administrator may call this; the service enforces that. */
+    public void changeVisibility(boolean value) { this.isPublic = value; }
+
+    /** Only the creating account or an administrator may call this; the service enforces that. */
+    public void changeText(String text) { this.quote = text; }
+
     public Quote(String quote, Human author, boolean isPublic) {
         this.quote = quote; this.author = author; this.isPublic = isPublic;
     }

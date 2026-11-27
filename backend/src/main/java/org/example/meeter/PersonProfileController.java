@@ -13,8 +13,9 @@ public class PersonProfileController {
     private final MeeterService people;
     private final InteractionService interactions;
     private final QuoteService quotes;
-    public PersonProfileController(MeeterService people, InteractionService interactions, QuoteService quotes) {
-        this.people=people; this.interactions=interactions; this.quotes=quotes;
+    private final PeopleRanking ranking;
+    public PersonProfileController(MeeterService people, InteractionService interactions, QuoteService quotes, PeopleRanking ranking) {
+        this.people=people; this.interactions=interactions; this.quotes=quotes; this.ranking=ranking;
     }
     @GetMapping public ApiModels.PersonProfileView profile(@PathVariable Long id) {
         return people.profile(id);
@@ -24,6 +25,10 @@ public class PersonProfileController {
         @RequestParam(defaultValue="20") @Min(1) @Max(100) int size) {
         people.browseHuman(id);
         return interactions.forPerson(id,type,page,size);
+    }
+    @GetMapping("/seen-with") public java.util.List<ApiModels.HumanView> seenWith(@PathVariable Long id,
+        @RequestParam(defaultValue="10") @Min(1) @Max(20) int limit) {
+        people.browseHuman(id); return ranking.seenWith(id,limit);
     }
     @GetMapping("/map") public java.util.List<InteractionService.MapPoint> map(@PathVariable Long id) {
         people.browseHuman(id); return interactions.personMap(id);

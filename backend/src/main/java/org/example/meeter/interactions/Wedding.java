@@ -17,6 +17,8 @@ public class Wedding extends Interaction {
     @Column(nullable = false) private boolean hadAfter;
     @Column(name = "was_i_invited", nullable = false, columnDefinition = "boolean default false")
     @Setter private boolean wasIInvited;
+    @Column(name = "is_divorced", nullable = false, columnDefinition = "boolean default false")
+    @Setter private boolean divorced;
     public Wedding(String name, String description, LocalDateTime date, Collection<Human> guests,
                    Human groom, Human bride, Place ceremony, Place party, Place hotel, boolean hadAfter) {
         super(name, description, date, date, guests, null);

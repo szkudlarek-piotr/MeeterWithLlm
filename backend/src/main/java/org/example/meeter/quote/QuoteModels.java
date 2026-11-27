@@ -7,6 +7,7 @@ import java.util.*;
 public final class QuoteModels {
     private QuoteModels() {}
     public record Input(@NotBlank @Size(min = 4, max = 10240) String quote, @NotNull(message = "Wybierz autora cytatu.") @Positive Long authorId, Boolean isPublic) {}
+    public record EditInput(@NotBlank @Size(min = 4, max = 10240) String quote) {}
     public record AuthorView(Long id, String fullName, String profilePhotoUrl) {}
     public enum Vote {
         PLUS(1), MINUS(-1);
@@ -16,10 +17,10 @@ public final class QuoteModels {
     }
     public record VoteInput(@NotNull Vote vote) {}
     public record RankedView(Long id, UUID uuid, String quote, AuthorView author, boolean isPublic,
-                             LocalDateTime addTime, long score, Integer myVote) {
-        static RankedView of(View view, long score, Integer myVote) {
+                             LocalDateTime addTime, long score, Integer myVote, boolean canEdit) {
+        static RankedView of(View view, long score, Integer myVote, boolean canEdit) {
             return new RankedView(view.id(), view.uuid(), view.quote(), view.author(), view.isPublic(),
-                view.addTime(), score, myVote);
+                view.addTime(), score, myVote, canEdit);
         }
     }
     public record View(Long id, UUID uuid, String quote, AuthorView author, boolean isPublic, LocalDateTime addTime) {

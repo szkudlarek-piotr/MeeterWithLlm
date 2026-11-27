@@ -4,7 +4,17 @@
 
 - `experiments/participants/history.json` contains an exported personal interaction history. Agents must not open, read, parse, search, quote, or otherwise inspect its contents, including through scripts or diagnostic tools. Only an explicit later user instruction authorizing access to this file may override this prohibition. User-run training and export commands may continue to use this file.
 
-Read this file first when working on this project. It applies to the entire project; also check for more specific `AGENTS.md` files in directories you change. Follow the user's current request and preserve unrelated work.
+Read this file first when working on this project.
+
+## Standing rules from the project owner
+
+- **Synthetic sandbox data is the only data for testing.** The database behind `set_agent_sandbo_env.ps1` holds artificial records. Agents may read, write, modify and delete records there and run tests against it. Dot-source the script in the same PowerShell session as the command that needs it, and never print its values.
+- **Participant models are trained on real data and stay untouched.** Do not retrain, regenerate, overwrite or re-export `experiments/participants/artifacts/*.joblib` or `shared_metrics.json` with sandbox data, and do not change model input features in a way that breaks compatibility with the trained artifacts. Fix how and when suggestions are triggered and displayed, not the trained models.
+- **Documentation is written in English.** Every new or updated document in this repository is English only. Polish copies of the documents are kept locally in `docs-pl/`, which is Git-ignored and must not be committed. When a document changes, update both the English file and its Polish copy if the copy is still useful.
+- **UI has an English version.** Every UI change ships with English text. Put new strings in `src/i18n.js` with both `pl` and `en` keys and render them through `t('key')`. Polish is the default locale; the menu switch stores the choice in `localStorage['meeter.locale']` (`'pl'` or `'en'`). Hardcoded Polish strings elsewhere are migrated when those components are changed.
+- **Commit after every complete change.** Write the commit message in English and end it with the attribution lines required by the session. Commit only the files belonging to the change. If a file already has someone else's uncommitted edits, say so in the reply before committing it.
+
+Apply these rules to the entire project. Check for more specific `AGENTS.md` files in directories you change. Follow the user's current request and preserve unrelated work.
 
 ## What this project is
 
@@ -14,17 +24,17 @@ Current-copy override: `application.properties` now points to a MariaDB/MySQL sa
 
 Before database work or backend startup, check the project-root PowerShell script `set_agent_sandbo_env.ps1`, which the user provides to configure the agent's database environment variables. Inspect it before running, then dot-source it in the same PowerShell session as the command that needs those variables (for example, `. .\set_agent_sandbo_env.ps1`). Do not print or copy credentials into chat, logs, or documentation. If database variables are missing, check this script before asking the user for connection configuration.
 
-Meeter is a local personal relationship and interaction tracker. The interface is in Polish and includes people, places, cliques (groups), an interaction feed, and a monthly calendar. Authentication connects an account to a person. Keep existing Polish UI text and date conventions unless the task asks for a language change.
+Meeter is a local personal relationship and interaction tracker. The interface is available in Polish (default) and English and includes people, places, cliques (groups), an interaction feed, and a monthly calendar. Authentication connects an account to a person. Keep existing Polish UI text and date conventions in the default locale unless the task asks for a language change.
 
-The frontend is React with JavaScript/JSX and Vite. The backend is Java 25, Spring Boot 4.1.1, Spring Security, Spring Data JPA, and file-backed H2. Dependency versions and scripts are defined in `package.json`, `package-lock.json`, and `backend/pom.xml`; check these files before changing the toolchain.
+The frontend is React with JavaScript/JSX and Vite. The backend is Java 21, Spring Boot 4.1.1, Spring Security, Spring Data JPA, and file-backed H2. Dependency versions and scripts are defined in `package.json`, `package-lock.json`, and `backend/pom.xml`; check these files before changing the toolchain.
 
 This is a development implementation with its own local database. Do not assume it connects to the original Meeter database or contains imported production data.
 
 ## Read next
 
-- `backend/REGISTRATION.md`: publiczny formularz rejestracji z jednorazowym JWT, migracja V11 i jawny skrypt przypisania istniejących osób użytkownikowi 1.
+- `backend/REGISTRATION.md`: public registration form with a one-time JWT, migration V11, and the explicit script that assigns existing people to user 1.
 
-Backup exception requested by the user: root backup.ps1 must use only the caller's DB_URL, DB_USER and DB_PASSWORD and must never dot-source set_agent_sandbo_env.ps1 or silently select a sandbox. Missing database environment must fail. Photo paths use caller APP_PHOTOS_* variables ahead of application.properties/defaults; SERVER_PORT supplies the default backend port. See backend/MIGRATIONS.md. This supersedes the generic sandbox-environment instruction above for this backup script.
+Backup exception requested by the user: root `backup.ps1` must use only the caller's DB_URL, DB_USER and DB_PASSWORD and must never dot-source `set_agent_sandbo_env.ps1` or silently select a sandbox. Missing database environment must fail. Photo paths use caller APP_PHOTOS_* variables ahead of application.properties/defaults; SERVER_PORT supplies the default backend port. See `backend/MIGRATIONS.md`. This supersedes the generic sandbox-environment instruction above for this backup script.
 
 - `backend/ADMIN_USERS.md`: admin-only creation of ROLE_USER accounts from existing unlinked Humans, generated passwords, and the explicitly requested local passwords.csv export. Never print, commit or return generated passwords through HTTP.
 
@@ -38,24 +48,28 @@ Backup exception requested by the user: root backup.ps1 must use only the caller
 - `backend/RELATIONSHIPS.md`: association entities, relationship metadata, and the legacy H2 schema migration.
 - `backend/QUOTES.md`: quote creation, public/author/admin reads, validation, and visibility semantics.
 - `backend/QUOTE_GAME.md`: public-only sampling, individual games, server timers, guess persistence, and leaderboard scoring.
+- `backend/FAMILY.md`: private family tree (parent-child and spouse links) stored in SQL, tree and edit endpoints, and the Family tab of the person dialog ("modal człowieka").
+- `experiments/participants/NEURAL.md`: default `*_neural` participant ranker, a per-account network trained online from the account's history, with weights in Git-ignored `artifacts/online/`; automatic context/guest mode switching; owner-run `compare_neural.py`. Agents must not run that comparison or read `history.json`, `artifacts/` (trained or online weights), metrics, logs or other files derived from the data.
 - `backend/AUTH_REVIEW.md`: authentication design and current limitations.
 
-These documents are mostly in Polish. Verify behavior against current source code when documentation and implementation differ. External links in them are background references; local code is the starting point for local changes.
+Verify behavior against current source code when documentation and implementation differ. External links in these documents are background references; local code is the starting point for local changes.
 
 ## Source map
 
-Aktualności now show database-backed product news (`app_news`), not an interaction feed. See `backend/NEWS.md`; keep news reads authenticated and publication admin-only with CSRF. The standalone quote collection UI and GET collection API are removed; quote creation, single-record visibility, people cards and quote game remain.
+News now shows database-backed product news (`app_news`), not an interaction feed. See `backend/NEWS.md`; keep news reads authenticated and publication admin-only with CSRF. The standalone quote collection UI and GET collection API are removed; quote creation, single-record visibility, people cards and quote game remain.
 
 | Location | Purpose |
 | --- | --- |
 | `src/main.jsx` | React entry point |
-| `src/App.jsx` | Welcome screen, login, logout, password changes, theme, session state |
+| `src/App.jsx` | Welcome screen, login, logout, password changes, theme, language switch, session state |
 | `src/api.js` | Shared API requests, CSRF headers, session expiration handling |
-| `src/Dashboard.jsx` | Dashboard, search, feed, and form/calendar coordination |
+| `src/i18n.js` | Polish and English strings, locale selection, `t('key')` helper |
+| `src/Dashboard.jsx` | Dashboard, left menu, search, feed, My quotes view, and form/calendar coordination |
 | `src/CalendarPanel.jsx` | Calendar presentation and person avatars |
 | `src/InteractionForm.jsx` | Forms and presentation helpers for interaction types |
 | `src/EventPhotoPicker.jsx` | Optional event image from a local file, public URL, or earlier owned event |
 | `src/QuoteForm.jsx` | Quote creation with an optional author; quotes appear in people cards and the guessing game |
+| `src/MyQuotesPanel.jsx` | The account's own quotes in public and private columns, with drag and drop between them |
 | `src/QuoteGamePanel.jsx` | Quote guessing setup, visit selection, timer, answers, own history, and leaderboard |
 | `src/HumanForm.jsx`, `src/EntityForms.jsx`, `src/EntityPicker.jsx` | People, places, cliques, and relation selection |
 | `src/styles/` | Styled-components, shared styles and themes |
@@ -70,6 +84,7 @@ Aktualności now show database-backed product news (`app_news`), not an interact
 | `backend/src/main/java/org/example/meeter/RelationshipSchemaMigration.java` | Idempotent legacy H2 relationship-table upgrade, executed before Hibernate |
 | `backend/src/main/java/org/example/meeter/photos/` | Person and event image endpoints, download policy, HTTP client, and local storage |
 | `backend/src/main/java/org/example/meeter/photos/EventPhotoStorage.java` | Event image normalization and rollback cleanup |
+| `backend/src/main/java/org/example/meeter/superpowers/` | Superpower dictionary, person links, photo import and photo serving |
 | `backend/src/main/resources/application.properties` | Local backend configuration |
 | `backend/src/test/java/org/example/meeter/` | Application, HTTP integration, photo URL policy, and relationship migration tests |
 
@@ -77,7 +92,7 @@ Aktualności now show database-backed product news (`app_news`), not an interact
 
 ## Run locally
 
-Use two terminals. Commands below are for PowerShell on Windows. Check for existing listeners before starting duplicate servers. Keep backend working directory set to `backend`, because database and photo paths are relative.
+Use two terminals. Commands below are for PowerShell on Windows. Check for existing listeners before starting duplicate servers. Keep the backend working directory set to `backend`, because database and photo paths are relative.
 
 Frontend, from the project root:
 
@@ -95,7 +110,7 @@ Backend, from `backend`:
 .\mvnw.cmd spring-boot:run
 ```
 
-The backend listens at `http://127.0.0.1:8091`. The Maven Wrapper obtains Maven and dependencies when necessary. Java 25 must be available.
+The backend listens at `http://127.0.0.1:8091`. The Maven Wrapper obtains Maven and dependencies when necessary. Java 21 must be available.
 
 If Java needs the Windows certificate store, use the documented trust configuration:
 
@@ -104,7 +119,7 @@ $env:MAVEN_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.tru
 .\mvnw.cmd spring-boot:run
 ```
 
-`backend/start.ps1` checks source/resource, POM and Maven Wrapper content hashes and the packaged JAR before startup. It runs `clean package -DskipTests` on changes or a missing build cache/JAR; otherwise it starts the existing JAR immediately, with that certificate configuration. The first run creates the cache in `backend/target/`. Use `-Rebuild` to force a build. From `backend`:
+`backend/start.ps1` checks source/resource, POM and Maven Wrapper content hashes and the packaged JAR before startup. Before starting it hashes `src/main/resources/db/migration/*.sql` and, when that set differs from `backend/data/last-backup-schema.sha256` (or the file is missing), runs the root `backup.ps1` first and aborts the start if the backup fails; the stamp is saved only after a successful backup. It runs `clean package -DskipTests` on changes or a missing build cache/JAR; otherwise it starts the existing JAR immediately, with that certificate configuration. The first run creates the cache in `backend/target/`. Use `-Rebuild` to force a build. From `backend`:
 
 ```powershell
 .\start.ps1
@@ -122,7 +137,7 @@ In a restricted agent environment, Java may fail with `Unable to establish loopb
 - For event image changes, cover file and URL import, reuse of an owned event image, rejection of invalid sources, access isolation, and atomic failure. Use temporary image directories in tests.
 - For quotes, cover trimmed text length (4–10240), optional and foreign authors, generated metadata, absence of the collection endpoint, public/author/admin visibility, authentication, and CSRF. Delete test quotes before their referenced people/accounts during cleanup.
 - For games, cover public-only sampling even for admins, at most two distinct quotes per author, visit/clique scope ownership, stable persisted order/deadlines, duplicate and invalid guesses, timeout/resume, self-quote exclusion, completed-only leaderboard, and foreign-game isolation. Delete games before quotes in test cleanup.
-- For UI changes, also inspect the affected flow in a browser when available, including relevant loading/error states and both themes.
+- For UI changes, also inspect the affected flow in a browser when available, including relevant loading/error states, both themes, and both languages.
 - For server startup, verify an HTTP response from the frontend, `GET /api/auth/csrf` on the backend, and that endpoint through the Vite proxy. A successful startup log alone does not prove the proxy works.
 - Report what was checked and any remaining limitations. A documentation-only change does not require application test runs.
 
@@ -136,6 +151,7 @@ User images are runtime data, stored outside the packaged application:
 
 - Person portraits: `backend/data/photos/people/`, configured by `app.photos.directory`.
 - Event images: `backend/data/photos/events/`, configured by `app.photos.events-directory`.
+- Superpower photos: `backend/data/photos/superpowers/`.
 
 Do not move user images into `src/main/resources/static`: reads must go through controllers that enforce authentication and record ownership. Static resources are suitable for fixed application assets such as a logo or default avatar.
 
@@ -147,23 +163,23 @@ The development bootstrap creates account `pszkudlarek` linked to Piotr Szkudlar
 
 Exclude the authenticated account's linked Human from directory results, search and total counts before pagination, including for admins. Identify that person by Human ID, never by name. Other people with the same name remain visible. Person pickers and photo access rules are unchanged.
 
-Exclude Humans whose clique name normalizes to my_exes from the directory query, total count, search and directory portrait endpoint, including for admins. Keep null-clique people visible. For equal internal scores sort by surname, then first name, then ID before pagination.
+Exclude Humans whose clique name normalizes to `my_exes` from the directory query, total count, search and directory portrait endpoint, including for admins. Keep null-clique people visible. For equal internal scores sort by surname, then first name, then ID before pagination.
 
-Social Score is internal to server-side ordering. Never return its numeric value through APIs (including to admins), log it as user data, or display the score/formula in the UI. The public directory DTO contains person, visitCount, and publicQuote only.
+Social Score is internal to server-side ordering. Never return its numeric value through APIs (including to admins), log it as user data, or display the score or formula in the UI. The public directory DTO contains person, visitCount, publicQuote and cliqueIcon only; superpowers are not part of the directory response.
 
-The Ludzie tab requests `directory=true` on `/api/people/browse` and includes only people with Social Score strictly greater than 2. Apply the threshold before pagination and to the search total. Unfiltered API callers retain the existing browse behavior.
+The People tab (Ludzie) requests `directory=true` on `/api/people/browse` and includes only people with Social Score strictly greater than 2. Apply the threshold before pagination and to the search total. Unfiltered API callers retain the existing browse behavior.
 
 Each directory card may include one random public quote by that Human (`publicQuote: {id, quote}` or null). Filter to `is_public=true` before drawing, including for admins; never reuse the broader private/admin quote visibility predicate. Draw only for current-page author IDs, with no per-card HTTP requests.
 
-The directory is now ordered by decayed interaction `points`, not visit count. `PeopleRanking` computes the global order before pagination using interactions containing the authenticated account's linked Human as a participant; see backend/README.md for weights, dates and rounding. Wedding scoring requires `weddings.was_i_invited=true` and applies to groom/bride only: WAGS by normalized clique name gets 3, others 15, half-life 1825 days. Import the original invitation flag; do not infer it from participants or assume the old clique ID 5. Existing schema/data changes require the usual backup; do not start against development data as part of tests.
+The directory is ordered by decayed interaction `points`, not visit count. `PeopleRanking` computes the global order before pagination using interactions containing the authenticated account's linked Human as a participant; see `backend/README.md` for weights, dates and rounding. Wedding scoring requires `weddings.was_i_invited=true` and applies to groom/bride only: WAGS by normalized clique name gets 3, others 15, half-life 1825 days. Import the original invitation flag; do not infer it from participants or assume the old clique ID 5. Existing schema/data changes require the usual backup; do not start against development data as part of tests.
 
 Explicit user-requested exception: authenticated `GET /api/people/browse` lists ALL Human records, including unowned/imported people and people owned by other accounts. Directory portraits use authenticated `GET /api/people/browse/{id}/photo`. Counts still include only the requesting account's visits. This does not list user accounts or grant mutation rights. Existing person pickers, original person-photo URLs, writes, and unrelated APIs retain ownership checks.
 
 ## Design rules to preserve
 
-UUID browser contract: src/api.js and image URLs use /api/v2 with persistent UUID strings for all entity references, including fields still named id/*Id/*Ids. Internal /api and domain/repository Long IDs remain for compatibility. publicapi boundary adapters translate references and project authorized DTOs; never expose a new numeric ID through v2 or bypass domain access checks. V8 adds/backfills actual UUID columns on places, cliques, quote_game_rounds and app_news, retaining all PK/FK and audit metadata. Batch response UUID lookups by entity type, and keep model-worker IDs internal. See backend/UUID_API.md. Changes must cover UUID paths, bodies, images, game rounds, invalid references, CSRF and ownership. Do not run schema upgrades against user data as tests.
+UUID browser contract: `src/api.js` and image URLs use `/api/v2` with persistent UUID strings for all entity references, including fields still named `id`, `*Id` or `*Ids`. Internal `/api` and domain/repository Long IDs remain for compatibility. `publicapi` boundary adapters translate references and project authorized DTOs; never expose a new numeric ID through v2 or bypass domain access checks. V8 adds/backfills actual UUID columns on places, cliques, quote_game_rounds and app_news, retaining all PK/FK and audit metadata. Batch response UUID lookups by entity type, and keep model-worker IDs internal. See `backend/UUID_API.md`. Changes must cover UUID paths, bodies, images, game rounds, invalid references, CSRF and ownership. Do not run schema upgrades against user data as tests.
 
-Authentication audit: V7 creates auth_events, storing LOGIN_SUCCESS, LOGIN_FAILURE, LOGIN_THROTTLED, LOGOUT and PASSWORD_CHANGED with server time, optional account/session record IDs, normalized login, connection IP and bounded User-Agent. Never store passwords, raw tokens, token hashes or request bodies in audit. Rejected login/throttle writes use a separate REQUIRES_NEW bean; successful changes and audit commit together. History has no account/token FK or cascade, no public API, and must survive token/account deletion. CSRF/body validation rejections and natural expiration are outside this history's current scope. See backend/AUTH_REVIEW.md.
+Authentication audit: V7 creates `auth_events`, storing LOGIN_SUCCESS, LOGIN_FAILURE, LOGIN_THROTTLED, LOGOUT and PASSWORD_CHANGED with server time, optional account/session record IDs, normalized login, connection IP and bounded User-Agent. Never store passwords, raw tokens, token hashes or request bodies in the audit. Rejected login/throttle writes use a separate REQUIRES_NEW bean; successful changes and audit commit together. History has no account/token FK or cascade, no public API, and must survive token/account deletion. CSRF/body validation rejections and natural expiration are outside this history's current scope. See `backend/AUTH_REVIEW.md`.
 
 - Use `src/api.js` for frontend API requests. Browser requests use relative `/api` paths, same-origin credentials, and CSRF headers for writes.
 - Authentication uses random tokens in HttpOnly cookies, with SHA-256 token hashes in the database. Passwords use BCrypt. Do not move credentials into localStorage or expose account entities in API responses.
@@ -173,15 +189,29 @@ Authentication audit: V7 creates auth_events, storing LOGIN_SUCCESS, LOGIN_FAILU
 - The six interaction types are meeting, visit, event, trip (`Citybreak` in Java), flatmate, and wedding. They share `Interaction` using JPA `JOINED` inheritance; they are not all subclasses of `Event`.
 - Preserve local date and local date-time semantics. Do not silently convert interaction dates to UTC. Calendar filtering must include overlapping ranges, ongoing periods, and all result pages needed for the month.
 - Preserve automatic participation of the account's linked person and applicable wedding participants, deduplication, and owner checks.
-- Many-to-many relationships are represented by explicit `InteractionParticipant` and `TripPlace` entities, not bare `@ManyToMany` collections. Each has an identity `id`, immutable `created_at`, and immutable `created_by_id` referring to an account (which links to a person). Preserve pair uniqueness and cascade deletion of relationship rows without deleting their people/places. The API still returns participant and place summaries. Legacy metadata is inferred from the parent interaction; it is not a recovered historical audit trail. Read `backend/RELATIONSHIPS.md` before changing these mappings or their migration.
+- Many-to-many relationships are represented by explicit `InteractionParticipant` and `TripPlace` entities, not bare `@ManyToMany` collections. Each has an identity `id`, immutable `created_at`, and immutable `created_by_id` referring to an account (which links to a person). Preserve pair uniqueness and cascade deletion of relationship rows without deleting their people or places. The API still returns participant and place summaries. Legacy metadata is inferred from the parent interaction; it is not a recovered historical audit trail. Read `backend/RELATIONSHIPS.md` before changing these mappings or their migration.
 - `getParticipants()` and `getPlaces()` return read-only endpoint sets. Preserve existing association rows during unrelated edits so their IDs and audit metadata remain stable. If relationship-editing APIs are added, new rows must record the account performing that edit, which may differ from the original interaction owner. Never accept creator metadata from the client.
-- Participant editing now uses POST `/api/interactions/{id}/participants` (interaction creator, owned people only) and DELETE `/api/interactions/{id}/participants/{humanId}` (self by linked Human ID or link creator). There is no admin bypass. Mutations lock the parent; existing links retain metadata. Explicit removal may remove automatically added participants; it does not remove their person records or wedding/flatmate domain references. Read/list visibility remains owner-only. Calendar hides FLATMATE without deleting records. See `backend/RELATIONSHIPS.md`.
+- Participant editing uses POST `/api/interactions/{id}/participants` (interaction creator, owned people only) and DELETE `/api/interactions/{id}/participants/{humanId}` (self by linked Human ID or link creator). There is no admin bypass. Mutations lock the parent; existing links retain metadata. Explicit removal may remove automatically added participants; it does not remove their person records or wedding/flatmate domain references. Read/list visibility remains owner-only. The calendar hides FLATMATE without deleting records. See `backend/RELATIONSHIPS.md`.
 - Preserve photo download protections against private/local addresses and unsafe redirects, resource limits, image normalization, and transaction-aware cleanup. See `backend/PHOTOS.md` before changing this module.
-- Some visible categories can be placeholders (for example, superpowers). Check for actual backend support before describing a feature as implemented.
+- Some visible categories can be placeholders. Check for actual backend support before describing a feature as implemented.
 
 ## Event creation and images
 
 Photo migration compatibility: `org.example.meeter.multimedia.photo.Photo` maps the original `photos` metadata table with string `PhotoType` values PROFILE_PICTURE, EVENT, TRIP, SUPERPOWER. `Human.profilePhoto` uses `people.profile_photo_id`; migrated portrait files belong in `app.photos.directory` under their original `photo_name`. Serve them only through the authenticated person photo endpoint. Keep the legacy `profile_photo_file` fallback and do not cascade-delete Photo metadata. See `backend/PHOTOS.md` for migration limits and file handling.
+
+## Superpowers
+
+`V14__superpowers.sql` creates the dedicated `superpowers` dictionary (`id`, `superpower_name`); `V15__superpower_metadata.sql` adds the public `uuid`, optional `superpower_photo_id` (photos), `added_by_id` (app_users) and `add_time`. `V16__human_superpowers.sql` adds the `human_superpower` join table (`id`, `human_id`, `superpower_id`, `add_time`, `added_by_id`, unique pair, FKs to `people`, `superpowers` and `app_users`). The `org.example.meeter.superpowers` package holds `Superpower`, `HumanSuperpower`, their repositories, services and controllers:
+
+- Authenticated `GET /api/superpowers`, `GET /api/superpowers/{id}` and `POST /api/superpowers` (CSRF) manage the dictionary.
+- `GET` and `POST /api/people/{humanId}/superpowers` and `DELETE /api/people/{humanId}/superpowers/{superpowerId}` manage a person's links.
+- Link writes are allowed for the admin, the person themselves, the person's creator and the person's spouse (the other side of a wedding). Adding is idempotent. v2 maps identifiers to UUIDs.
+
+Superpowers are separate from legacy `photos` rows with `photo_type='SUPERPOWER'`, which stay inert. The sidebar action `Dodaj supermoc` (`src/SuperpowerForm.jsx`) creates dictionary entries. The person dialog (`src/PersonProfile.jsx`) lets the person's creator add and remove superpowers. The profile DTO exposes `canEditSuperpowers`, using the same admin/self/creator/spouse rule. Superpower icons appear only in that dialog, not on the People cards.
+
+Photo import for superpowers runs from the admin panel through `POST /api/admin/superpowers/photos/import` and starts with a `dryRun` preview. File names are `{superpower ID}.jpg|png|gif`; stored files are `backend/data/photos/superpowers/{uuid}.jpg`.
+
+Manual import from the original database uses root `migrate_superpowers.sql` (idempotent, trimmed case-insensitive name match, `added_by_id` set to the importing account). Never run it automatically. The `migrate_*.sql` scripts are Git-ignored; a person runs them by hand.
 
 `InteractionForm.jsx` handles event start/end, optional personal arrival/departure, an optional selected place plus independent `placeString`, description, and selected people. Blank personal dates mean the event boundaries. Keep personal participation inside the event range and validate ordering on both client and server.
 
@@ -199,21 +229,23 @@ Event DTOs expose `details.photoUrl`, `details.photoName`, and `details.placeStr
 
 ## Quotes
 
-Person profile exception: authenticated `/api/people/browse/{id}` exposes profile details and `canEditPhoto`; its paginated `/interactions` and `/map` reads include meetings, visits, events and trips involving that Human only when the viewer created the interaction, participates by linked Human ID, or is admin. Map points use the same predicate across all results, before pagination. Ordinary interaction APIs, mutations and event photo reads retain their original ownership rules. Profile `/quotes` paginates that Human's quotes using the existing public/author/admin visibility predicate. Profile photo changes allow the person record owner or an administrator (including unowned/imported and foreign-owned Humans), accepting exactly one URL or Base64 file. This exception applies only to photo writes; it does not reassign ownership or broaden ordinary person/photo reads. No schema migration is needed.
+Person profile exception: authenticated `/api/people/browse/{id}` exposes profile details and `canEditPhoto`. Its paginated `/interactions` and `/map` reads include meetings, visits, events and trips involving that Human only when the viewer created the interaction, participates by linked Human ID, or is an admin. Map points use the same predicate across all results, before pagination. Ordinary interaction APIs, mutations and event photo reads retain their original ownership rules. Profile `/quotes` paginates that Human's quotes using the existing public/author/admin visibility predicate. Profile photo changes allow the person record owner or an administrator (including unowned/imported and foreign-owned Humans), accepting exactly one URL or Base64 file. This exception applies only to photo writes; it does not reassign ownership or broaden ordinary person/photo reads. No schema migration is needed.
 
-Render quote text through `src/QuoteContent.jsx` in the people directory and quote game. Quotes are centered and support a formatting-only HTML allowlist rebuilt as React elements from an inert template. Do not copy source attributes or mount raw HTML; scripts, embedded content and active markup must stay excluded. Keep database text unchanged.
+Render quote text through `src/QuoteContent.jsx` in the people directory, My quotes and the quote game. Quotes are centered and support a formatting-only HTML allowlist rebuilt as React elements from an inert template. Do not copy source attributes or mount raw HTML; scripts, embedded content and active markup must stay excluded. Keep database text unchanged. Line breaks in quote text are preserved by `.quote-content { white-space: pre-line }` in `src/styles/quotes.js`.
 
 `Quote` lives in `org.example.meeter.quote` and extends the existing `OwnedEntity`. Use this project's actual `org.example.meeter.Human` and `org.example.meeter.auth.User` packages rather than imports from the original application. The database stores text in `quote_text` (length 10240), an optional author relation, `is_public`, generated `add_time` (`LocalDateTime`), UUID, identity ID, and the authenticated creator. Creation time, UUID, and ownership are server-managed; return DTOs rather than entities.
 
 `POST /api/quotes` accepts `{ quote, authorId, isPublic }`. Text is stripped and must have 4–10240 characters; author ID is optional and must identify an owned person. Keep entity validation, request validation, and the Polish form consistent about the minimum of 4 characters. `isPublic` defaults to false.
 
-`GET /api/quotes/{id}` applies quote visibility: public quotes for authenticated accounts, private quotes for the account linked to their author, all quotes for ROLE_ADMIN, and authorless private quotes for their creator. The standalone collection endpoint GET /api/quotes and its search/pagination service have been removed; preserve the people-card public-only query and game sampling.
+`GET /api/quotes/{id}` applies quote visibility: public quotes for authenticated accounts, private quotes for the account linked to their author, all quotes for ROLE_ADMIN, and authorless private quotes for their creator. The standalone collection endpoint `GET /api/quotes` and its search/pagination service have been removed; preserve the people-card public-only query and game sampling.
+
+`PATCH /api/quotes/{id}/visibility` (body `{ isPublic }`) changes a quote's visibility. It is allowed for the quote's author and for admins. The My quotes view calls it when a quote is dragged to the other column.
 
 `isPublic` controls actual visibility to other authenticated users. There is no anonymous quote endpoint. DTOs expose only an author summary; an author's portrait URL is omitted when the requesting account does not own that person, because the portrait API keeps its existing ownership checks. Do not expose account details or broaden unrelated person/photo APIs.
 
 Roles are persisted enum values (`ROLE_USER`, `ROLE_ADMIN`) in the `user_roles` element collection. `CurrentAccount.Principal` and authentication DTOs include roles; token authentication and `UserDetailsService` use these stored authorities. New accounts default to `ROLE_USER`; `RoleBootstrap` backfills that role for existing accounts. With local `app.dev.bootstrap=true`, it also grants `pszkudlarek` both roles idempotently. This local admin bootstrap must remain disabled outside development. Roles are read from the database during token authentication, not supplied by clients; there is no public role-grant endpoint.
 
-The dashboard has no standalone Cytaty view. Keep the Dodaj cytat action and QuoteForm.jsx with EntityPicker and src/api.js. Saving opens and refreshes the people directory. Quotes appear in people cards and the guessing game, not as dated calendar events.
+The dashboard has a My quotes view (`view === 'my-quotes'`, left menu) for the account's own quotes; see the recent-changes section. Keep the Dodaj cytat (Add quote) action and `QuoteForm.jsx` with `EntityPicker` and `src/api.js`. Saving opens and refreshes the people directory. Quotes appear in people cards and the guessing game, not as dated calendar events.
 
 ## Quote guessing game
 
@@ -223,7 +255,7 @@ Each player starts an individual game from one owned visit or up to ten owned cl
 
 The per-question timer defaults to 30 seconds (10–120 configurable). Its persisted server deadline is authoritative. Repeated reads or `next` calls must not reset an active deadline. Start later questions only when the player requests the next question; feedback time should not consume its timer. An expired answer is incorrect even if its author is correct; an expired resumed question records a timeout. Pending question DTOs must omit the quote ID and correct author. Only reveal the author after the guess is saved.
 
-Store guesses in `quote_guesses`, including guessed author (nullable on timeout), correctness, timeout, self-quote flag, elapsed time, creator, and creation timestamp. Do not accept correctness, timing, ownership, or score from the client. Lock the game while answering and retain the unique constraint on the round so retries/concurrent submissions cannot overwrite an answer. Session history and guesses remain owner-only, including for admins.
+Store guesses in `quote_guesses`, including guessed author (nullable on timeout), correctness, timeout, self-quote flag, elapsed time, creator, and creation timestamp. Do not accept correctness, timing, ownership, or score from the client. Lock the game while answering and retain the unique constraint on the round so retries or concurrent submissions cannot overwrite an answer. Session history and guesses remain owner-only, including for admins.
 
 Rank completed games by percentage of correctly guessed **other people's** quotes. Exclude the account-linked person's own quotes from both numerator and denominator. Zero eligible quotes means percentage null and no leaderboard entry. Show the best completed game per account, at most 100 accounts; ties use shorter total answer time on non-self quotes, then completion time and game ID. The authenticated leaderboard exposes player names and aggregate results, not quote text, private source names, or other players' guesses.
 
@@ -237,40 +269,53 @@ Local participant-model inference: the backend automatically starts `experiments
 
 Shared participant rankers are trained explicitly with `experiments/participants/train-shared.ps1`; see `experiments/participants/SHARED_MODELS.md`. Training uses a read-only database snapshot in memory, never `history.json`. Three `shared_*.joblib` artifacts serve both suggestion modes across accounts and contain no account history. Runtime `ParticipantHistory` builds creator-owned, account-scoped features for the trusted Python worker; do not accept that history from browser input, share it between accounts, or give the worker database credentials. Legacy per-account models remain a fallback. Never train automatically at backend startup.
 
-New shared training writes feature schema 3: additive exponentially decayed interaction counts (default half-life 365 days, `-HalfLifeDays`), place counts and weekday/place-weekday counts, with the query's local start date. Same-day/future history is excluded. Existing schema 2 artifacts keep legacy features until explicitly retrained; never silently reinterpret their weights. See SHARED_MODELS.md. No automatic training or database access for diagnostics.
+New shared training writes feature schema 3: additive exponentially decayed interaction counts (default half-life 365 days, `-HalfLifeDays`), place counts and weekday/place-weekday counts, with the query's local start date. Same-day and future history is excluded. Existing schema 2 artifacts keep legacy features until explicitly retrained; never silently reinterpret their weights. See `SHARED_MODELS.md`. No automatic training or database access for diagnostics.
 
 Read the relevant source and documentation before editing. Keep changes focused on the requested outcome and match existing conventions. Preserve local data and unrelated edits. Update this file or the focused backend documents when commands, architecture, or behavior materially change. Do not record transient process IDs, running-session handles, or current passwords as project setup instructions.
 
 ## Quote author selection update
-New quotes require authorId. Authenticated GET /api/quotes/authors searches all Humans regardless of owner, including the linked self and imported records; my_exes remains excluded. This exception applies only to quote author selection and creation. Existing authorless quotes and visibility rules remain supported. Other person pickers retain ownership checks.
+
+New quotes require `authorId`. Authenticated `GET /api/quotes/authors` searches all Humans regardless of owner, including the linked self and imported records; `my_exes` remains excluded. This exception applies only to quote author selection and creation. Existing authorless quotes and visibility rules remain supported. Other person pickers retain ownership checks.
 
 ## Interaction editing
 
-Manual wedding import: root migrate_weddings.sql reads real_meeter.weddings/wedding_guest and explicitly writes only vibecoded_meeter, the destination confirmed by the user (MariaDB 12.3.3), through a schema-qualified conventional stored procedure. See backend/WEDDING_IMPORT.md. Keep this outside Flyway; never run automatically. Preserve original was_i_invited and poprawiny. Self is added only for original was_i_invited=1 (explicit source guests/spouses remain participants). The user confirmed info_after_hover is the wedding name: use it as the title, falling back to Wesele #ID only for NULL/blank. Preserve the original text and partner_id in the ledger, without assuming partner participation. fix_wedding_names.sql corrects only exact generated names on existing ledger-linked weddings, using the preserved snapshot. Retain the ledger for repeat safety and preserve existing IDs/metadata and later application edits. The source schema was provided by the user; do not connect to original/application databases without authorization.
+Manual wedding import: root `migrate_weddings.sql` reads `real_meeter.weddings` and `wedding_guest` and explicitly writes only `vibecoded_meeter`, the destination confirmed by the user (MariaDB 12.3.3), through a schema-qualified conventional stored procedure. See `backend/WEDDING_IMPORT.md`. Keep this outside Flyway; never run it automatically. Preserve original `was_i_invited` and `poprawiny`. Self is added only for original `was_i_invited=1` (explicit source guests and spouses remain participants). The user confirmed that `info_after_hover` is the wedding name: use it as the title, falling back to `Wesele #ID` only for NULL or blank values. Preserve the original text and `partner_id` in the ledger, without assuming partner participation. `fix_wedding_names.sql` corrects only exact generated names on existing ledger-linked weddings, using the preserved snapshot. Retain the ledger for repeat safety and preserve existing IDs, metadata and later application edits. The source schema was provided by the user; do not connect to original or application databases without authorization.
 
-Person profile interaction cards now reuse the calendar participant picker to add participants to creator-owned meetings, visits, events and trips. The profile interaction DTO preserves creator-only canAddParticipants; admin/profile read visibility does not grant write permission. Profile cards do not expose participant removal. Additions use the existing CSRF-protected endpoint and immediately update the displayed participants. No schema migration.
+Person profile interaction cards reuse the calendar participant picker to add participants to creator-owned meetings, visits, events and trips. The profile interaction DTO preserves creator-only `canAddParticipants`; admin and profile read visibility does not grant write permission. Profile cards do not expose participant removal. Additions use the existing CSRF-protected endpoint and immediately update the displayed participants. No schema migration.
 
-Self profile: GET/PUT /api/people/self and GET/POST /api/people/self/photo use only the authenticated linked Human ID, including imported or foreign-owned records. Self may edit basic personal fields and portrait without changing ownership, home or clique. Existing owner/admin photo writes remain available. All portrait replacements archive the old file under app.photos.former-directory (default backend/data/photos/former-people) with PhotoType.FORMER_HUMAN_PHOTO; preserve old metadata identity. V6 extends photos.photo_type. Copy before commit, remove active old file after commit, and remove new files on rollback. Back up database and both photo folders before adoption; never auto-run maintenance.
+Self profile: `GET`/`PUT /api/people/self` and `GET`/`POST /api/people/self/photo` use only the authenticated linked Human ID, including imported or foreign-owned records. Self may edit basic personal fields and portrait without changing ownership, home or clique. Existing owner and admin photo writes remain available. All portrait replacements archive the old file under `app.photos.former-directory` (default `backend/data/photos/former-people`) with `PhotoType.FORMER_HUMAN_PHOTO`; preserve old metadata identity. V6 extends `photos.photo_type`. Copy before commit, remove the active old file after commit, and remove new files on rollback. Back up the database and both photo folders before adoption; never auto-run maintenance.
 
-Interaction read visibility update: GET /api/interactions (including calendar filters, search, counts and pagination) and GET /api/interactions/{id} allow the creator OR an actual participant identified by the authenticated account's linked Human ID. No admin bypass. This supersedes older owner-only read statements. Removing self-participation revokes participant access; creators retain access. Editing and adding participants remain creator-only; participant removal rules remain unchanged. Event photo reads/reuse remain owner-only and foreign interaction DTOs omit photoUrl. No schema/data migration or backfill is required.
+Interaction read visibility: `GET /api/interactions` (including calendar filters, search, counts and pagination) and `GET /api/interactions/{id}` allow the creator or an actual participant identified by the authenticated account's linked Human ID. There is no admin bypass. This supersedes older owner-only read statements. Removing self-participation revokes participant access; creators retain access. Editing and adding participants remain creator-only; participant removal rules remain unchanged. Event photo reads and reuse remain owner-only, and foreign interaction DTOs omit `photoUrl`. No schema or data migration or backfill is required.
 
-Calendar day details offer an Edit action for the interaction creator. Typed PUT endpoints use the creation contracts with empty details.participantIds; participant edits stay separate. Preserve interaction identity/metadata, retained participant and trip-place rows, and explicit participant removals. New references require ownership; unchanged imported references may remain. Event editing defaults to retaining its photo via photoEventId=self; no source detaches it without deleting shared files. Read backend/INTERACTIONS.md and backend/RELATIONSHIPS.md for details.
+Calendar day details offer an Edit action for the interaction creator. Typed PUT endpoints use the creation contracts with empty `details.participantIds`; participant edits stay separate. Preserve interaction identity and metadata, retained participant and trip-place rows, and explicit participant removals. New references require ownership; unchanged imported references may remain. Event editing defaults to retaining its photo via `photoEventId=self`; no source detaches it without deleting shared files. Read `backend/INTERACTIONS.md` and `backend/RELATIONSHIPS.md` for details.
 
 ## Participant directory selection
 
-Person autocomplete is context-ranked before LIMIT: `/api/people/participants?type=MEETING|VISIT|EVENT|TRIP|FLATMATE|WEDDING` counts distinct interactions of that type containing the current account-linked Human, regardless of creator and including for admins. `/api/people?type=...` uses the same ordering while retaining owned-only candidates (spouses/flatmate). Missing type retains the previous default. Quote authors are ordered by the number of quotes visible under the existing public/author/admin predicate. Ties use surname, first name, ID. Counts are not returned. `PersonSuggestions` owns these queries; do not reuse internal Social Score for autocomplete. Forms and calendar participant editing pass their interaction type.
+Person autocomplete is context-ranked before LIMIT: `/api/people/participants?type=MEETING|VISIT|EVENT|TRIP|FLATMATE|WEDDING` counts distinct interactions of that type containing the current account-linked Human, regardless of creator and including for admins. `/api/people?type=...` uses the same ordering while retaining owned-only candidates (spouses and flatmates). A missing type retains the previous default. Quote authors are ordered by the number of quotes visible under the existing public/author/admin predicate. Ties use surname, first name, then ID. Counts are not returned. `PersonSuggestions` owns these queries; do not reuse internal Social Score for autocomplete. Forms and calendar participant editing pass their interaction type.
 
-Authenticated GET `/api/people/participants` searches all directory Humans, including imported and foreign-owned records, including normalized `my_exes` for historical records. It returns only ID, full name and participant portrait URL (/api/people/participants/{id}/photo), including ex portraits. Interaction creation and the dedicated add-participants endpoint accept those people; the linked self is still added automatically at creation. Links record the acting account, without changing person ownership. Interaction reads/writes and removal permissions stay unchanged. Other person assignments (spouses, flatmate, ordinary pickers) retain ownership requirements. Quote-author and participant pickers show circular portraits using authenticated directory/participant photo URLs, with initials for missing images.
+Authenticated `GET /api/people/participants` searches all directory Humans, including imported and foreign-owned records and, for historical records, normalized `my_exes`. It returns only ID, full name and participant portrait URL (`/api/people/participants/{id}/photo`), including ex portraits. Interaction creation and the dedicated add-participants endpoint accept those people; the linked self is still added automatically at creation. Links record the acting account, without changing person ownership. Interaction reads, writes and removal permissions stay unchanged. Other person assignments (spouses, flatmate, ordinary pickers) retain ownership requirements. Quote-author and participant pickers show circular portraits using authenticated directory and participant photo URLs, with initials for missing images.
 
 ## Clique ordering
-Owned clique directory order uses the mean of squared PeopleRanking member points, descending, before pagination. Include zero-score members in the denominator, exclude the account-linked Human from numerator and denominator, and rank empty cliques at zero. Ties use clique ID ascending. Member order remains the people-directory order. Never expose the aggregate or formula in DTOs, logs or UI. See backend/CLIQUES.md.
+
+Owned clique directory order uses the mean of squared `PeopleRanking` member points, descending, before pagination. Include zero-score members in the denominator, exclude the account-linked Human from numerator and denominator, and rank empty cliques at zero. Ties use clique ID ascending. Member order remains the people-directory order. Never expose the aggregate or formula in DTOs, logs or UI. See `backend/CLIQUES.md`.
 
 ## Explicit self-participation backfill
-Admin GET/POST /api/admin/participation-backfill is the user-authorized exception for adding only the acting account-linked Human across all creators' meetings, visits, events, trips and weddings with was_i_invited=true. No flatmates. GET previews counts; POST requires CSRF, locks parents and preserves existing association metadata. New links record the actor and current timestamp. The entire write is atomic and repeatable; it may restore deliberately removed self-links only when explicitly invoked. Never run this tool automatically or infer invitation flags. Social ordering and visit counts now require an actual linked-self participant row rather than creator ownership. Existing ordinary interaction permissions remain unchanged. See backend/PARTICIPATION_BACKFILL.md.
+
+Admin `GET`/`POST /api/admin/participation-backfill` is the user-authorized exception for adding only the acting account-linked Human across all creators' meetings, visits, events, trips and weddings with `was_i_invited=true`. No flatmates. `GET` previews counts; `POST` requires CSRF, locks parents and preserves existing association metadata. New links record the actor and current timestamp. The entire write is atomic and repeatable; it may restore deliberately removed self-links only when explicitly invoked. Never run this tool automatically or infer invitation flags. Social ordering and visit counts now require an actual linked-self participant row rather than creator ownership. Existing ordinary interaction permissions remain unchanged. See `backend/PARTICIPATION_BACKFILL.md`.
 
 ## Quote game visit selection
-User-authorized exception: authenticated GET /api/quote-games/visits lists visits created by the account or containing its linked Human as an actual participant. The game creation endpoint uses the same predicate, without an admin bypass. Imported and foreign-owned attended visits are eligible; ordinary interaction APIs stay owner-only. The selector loads a paginated list automatically, ordered by start date and ID descending, with an optional name filter.
 
-## KTO ETA SKAZAŁ
-User-requested separate game, alongside the original visit/clique game. POST /api/quote-games/single accepts {secondsPerQuestion}, draws one uniformly random author with public quotes and one random public quote by that author, and persists exactly one round. All Human IDs are answer candidates (including imported/foreign-owned people); only IDs and names are exposed. No author identity is revealed before answering. Existing timer, public-retraction, ownership, CSRF, self-quote and guess rules apply. scopeType=SINGLE uses existing columns; no schema migration. GET /api/quote-games/single/history and /api/quote-games/single/leaderboard serve only SINGLE games. The original history and leaderboard exclude SINGLE games. The single=true query parameter remains supported for API compatibility. The UI offers separate menu entries and resets local state when switching games.
+User-authorized exception: authenticated `GET /api/quote-games/visits` lists visits created by the account or containing its linked Human as an actual participant. The game creation endpoint uses the same predicate, without an admin bypass. Imported and foreign-owned attended visits are eligible; ordinary interaction APIs stay owner-only. The selector loads a paginated list automatically, ordered by start date and ID descending, with an optional name filter.
 
+## Single-quote game ("Who said it")
+
+User-requested separate game, alongside the original visit/clique game. `POST /api/quote-games/single` accepts `{secondsPerQuestion}`, draws one uniformly random author with public quotes and one random public quote by that author, and persists exactly one round. All Human IDs are answer candidates (including imported and foreign-owned people); only IDs and names are exposed. No author identity is revealed before answering. Existing timer, public-retraction, ownership, CSRF, self-quote and guess rules apply. `scopeType=SINGLE` uses existing columns; no schema migration. `GET /api/quote-games/single/history` and `/api/quote-games/single/leaderboard` serve only SINGLE games. The original history and leaderboard exclude SINGLE games. The `single=true` query parameter remains supported for API compatibility. The UI offers separate menu entries and resets local state when switching games.
+
+## Recent changes (superpowers, My quotes, quote text)
+
+- Superpower icons appear only in the person dialog (`src/PersonProfile.jsx`), below the person's details, with the name on hover. The People view (`src/PeoplePanel.jsx`) does not show them, and `/api/people/browse` does not return superpowers. The remove button for a superpower (`.superpower-remove`) appears on hover over the list or when the list has keyboard focus (`src/styles/personForms.js`).
+- Superpower photos are imported from the admin panel (`POST /api/admin/superpowers/photos/import`, preview with `dryRun` first). Files are named `{superpower ID}.jpg|png|gif` and stored as `backend/data/photos/superpowers/{uuid}.jpg`. The `migrate_*.sql` scripts are local and Git-ignored; a person runs them by hand.
+- My quotes is its own view in the left menu (`src/Dashboard.jsx`, `view === 'my-quotes'`), not part of the My data dialog. It shows two columns, public and private. Drag a quote between columns with the mouse or keyboard (`@dnd-kit/core`). There is no visibility button because dragging replaces it; the change goes through `PATCH /api/quotes/{id}/visibility`. Columns stay visible when there are no quotes. Styles are in `src/styles/myQuotes.js`; colours come from theme variables (`--card`, `--surface`, `--border`, `--accent`).
+- `QuoteContent` keeps line breaks in quote text (`.quote-content { white-space: pre-line }` in `src/styles/quotes.js`). The rules that drop newlines next to `<br>` still apply.
+- The language switch in the top bar changes between Polish and English. It stores the choice in `localStorage['meeter.locale']` and reloads the page, because most translated strings are read once when rendered.
+- `@dnd-kit/core` is a dependency in `package.json`. Java in `backend/pom.xml` is 21, and CI uses 21 too.

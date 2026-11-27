@@ -1,105 +1,106 @@
-# Aktualna konfiguracja
+# Current configuration
 
-Ta kopia używa MariaDB i Flyway; instrukcje H2 poniżej są historyczne. Zmiany schematu i aktualności produktu przenosimy wersjonowanymi migracjami — zobacz [MIGRATIONS.md](MIGRATIONS.md) oraz [NEWS.md](NEWS.md). Aktualności pokazują zmiany funkcji, interakcje są w kalendarzu. Kolekcja Cytaty została usunięta; pozostają formularz, kafelki ludzi i gra.
+This copy uses MariaDB and Flyway; the H2 instructions below are historical. Schema changes and product news are delivered as versioned migrations; see [MIGRATIONS.md](MIGRATIONS.md) and [NEWS.md](NEWS.md). News shows feature changes, and interactions are in the calendar. The standalone Quotes collection has been removed; the form, the people cards and the game remain.
 
-# Backend Meetera
+# Meeter backend
 
-## Baza w tej kopii i konta testowe
+## Database in this copy and test accounts
 
-Ta kopia korzysta z MariaDB/MySQL wskazanej przez `spring.datasource.*` w `application.properties`, z driverem MariaDB w `pom.xml`. Poniższe starsze opisy H2 dotyczą poprzedniej konfiguracji; testy nadal powinny używać osobnej bazy w pamięci. Nie zapisuj danych dostępowych do bazy w dokumentacji.
+This copy uses the MariaDB/MySQL database given by `spring.datasource.*` in `application.properties`, with the MariaDB driver in `pom.xml`. The older H2 descriptions below refer to the previous configuration; tests should still use a separate in-memory database. Do not write database access details into the documentation.
 
-Automatyczne tworzenie przykładowych osób, miejsc, klik, interakcji i kont testowych zostało usunięte. Wcześniej zapisane rekordy pozostają w bazie; zmiana kodu ich nie kasuje.
+The automatic creation of sample people, places, cliques, interactions and test accounts has been removed. Records saved earlier remain in the database; a code change does not delete them.
 
-Cytaty, ich API i formularz: [QUOTES.md](QUOTES.md).
+Quotes, their API and the form: [QUOTES.md](QUOTES.md).
 
-Gra w autorów cytatów, timer i ranking: [QUOTE_GAME.md](QUOTE_GAME.md).
+The quote author game, the timer and the ranking: [QUOTE_GAME.md](QUOTE_GAME.md).
 
-Tabele powiązań z własnym ID, datą i autorem oraz migracja starych danych: [RELATIONSHIPS.md](RELATIONSHIPS.md).
+Relationship tables with their own ID, date and author, and the migration of old data: [RELATIONSHIPS.md](RELATIONSHIPS.md).
 
-Modele i API sześciu typów interakcji oraz uzasadnienie zmian: [INTERACTIONS.md](INTERACTIONS.md).
+The models and API of the six interaction types, and the reasons for the changes: [INTERACTIONS.md](INTERACTIONS.md).
 
-Import profilówek z linku i opis przykładowych danych: [PHOTOS.md](PHOTOS.md).
+Importing profile pictures from a link and a description of the sample data: [PHOTOS.md](PHOTOS.md).
 
-Spring Boot 4.1.1, Java 25, Spring Data JPA i osobna baza H2. Projekt nie zawiera połączenia z dotychczasową bazą Meetera ani jej danych.
+Spring Boot 4.1.1, Java 21, Spring Data JPA and a separate H2 database. The project contains no connection to the original Meeter database and none of its data.
 
-## Uruchomienie
+## Running
 
-W katalogu `backend`:
+In the `backend` folder:
 
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
 
-Maven Wrapper pobierze Maven i zależności przy pierwszym uruchomieniu. Jeśli Java nie ufa certyfikatowi lokalnej sieci, użyj zaufanych certyfikatów Windows (bez wyłączania sprawdzania TLS):
+The Maven Wrapper downloads Maven and the dependencies on the first run. If Java does not trust the certificate of the local network, use the Windows trusted certificates (without disabling TLS verification):
 
 ```powershell
 $env:MAVEN_OPTS='-Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE'
 .\mvnw.cmd spring-boot:run
 ```
 
-API działa na `http://127.0.0.1:8091`. Frontend Vite przekazuje `/api` na ten adres; w katalogu głównym uruchom `npm run dev`.
+The API runs at `http://127.0.0.1:8091`. The Vite frontend forwards `/api` to that address; run `npm run dev` in the project root.
 
-## Dane
+## Data
 
-Baza developerska powstaje automatycznie w `backend/data/meeter-dev.mv.db`, pod warunkiem uruchamiania z katalogu `backend`. Dane przetrwają restart. Folder jest ignorowany przez Git. Nie trzeba instalować serwera bazy ani podawać hasła do rzeczywistego Meetera. Lokalny inicjalizator dodaje wyłącznie konto startowe i osobę opisaną poniżej.
+The development database is created automatically in `backend/data/meeter-dev.mv.db`, provided the application is started from the `backend` folder. Data survives a restart. The folder is ignored by Git. You do not need to install a database server or enter a password for the real Meeter. The local initialiser only adds the start-up account and the person described below.
 
-Testy korzystają wyłącznie z H2 w pamięci. Docelową MariaDB/PostgreSQL i migracje schematu można dodać później. `ddl-auto=update` jest rozwiązaniem developerskim, nie systemem migracji produkcyjnych.
+The tests use only an in-memory H2 database. A production MariaDB/PostgreSQL target and schema migrations can be added later. `ddl-auto=update` is a development convenience, not a production migration system.
 
 ## API
 
-### Przeglądanie ludzi
+### Browsing people
 
-Widok **Ludzie** pomija osobę powiązaną z zalogowanym kontem (według Human ID, również dla administratora) przed wyszukiwaniem, zliczaniem i paginacją. Pozostałe osoby o takim samym imieniu i nazwisku pozostają widoczne. Wyświetla pozostałe osoby z tabeli `people`, również osoby bez właściciela i przypisane innym kontom, z profilówkami, liczbą wizyt oraz losowym publicznym cytatem. Sortuje według punktów malejąco, następnie alfabetycznie po nazwisku i imieniu oraz po ID. Uwzględnia również osoby bez interakcji (0 pkt). Licznik wizyt obejmuje wizyty z własnym powiązaniem uczestnika, również zaplanowane, niezależnie od długości. Punkty pochodzą z interakcji, w których uczestniczy osoba powiązana z kontem, niezależnie od twórcy; przyszłe daty punktowe jeszcze nie dają punktów.
+The **People** view (Ludzie) skips the person linked to the signed-in account (matched by Human ID, also for administrators) before searching, counting and paginating. Other people with the same first and last name remain visible. It shows the other people from the `people` table, including people without an owner and people assigned to other accounts, with their portraits, the number of visits and one random public quote. It sorts by points in descending order, then alphabetically by surname and first name, then by ID. People without interactions (0 points) are included. The visit counter covers visits with an own participant link, including planned ones, regardless of their length. Points come from interactions in which the person linked to the account takes part, regardless of the creator; point dates in the future do not yet award points.
 
-Punktacja w `PeopleRanking` nie wymaga funkcji SQL z dawnej bazy: dla każdej interakcji `ROUND(POWER(0.5, liczba_dni / półtrwanie), 3) * waga`, potem suma. Dzisiaj jest lokalną datą w Europe/Warsaw. Wizyta: 6 pkt / 720 dni, data początku; spotkanie: 3 / 360, data początku; event: 1 / 180, osobiste wyjście lub koniec wydarzenia; podróż: 3 / 3650, data końca. Ślub: tylko para młoda i tylko `was_i_invited=true`; 3 pkt dla osoby w klice o nazwie WAGS (bez względu na wielkość liter i skrajne spacje), 15 pkt dla pozostałych, półtrwanie w obu przypadkach 1825 dni (5 × 365). Osoba bez kliki należy do pozostałych. Zwykli goście weselni i wspólne mieszkanie nie dostają punktów z tego tytułu. Ranking powstaje przed stronicowaniem. Metadane punktacji nie są zapisywane w bazie i przeliczają się przy odczycie.
+The scoring in `PeopleRanking` does not need SQL functions from the old database: for each interaction it computes `ROUND(POWER(0.5, number_of_days / half_life), 3) * weight`, then sums them. "Today" is the local date in Europe/Warsaw. Visit: 6 points / 720 days, start date; meeting: 3 / 360, start date; event: 1 / 180, personal departure or end of the event; trip: 3 / 3650, end date. Wedding: only the couple, and only when `was_i_invited=true`; 3 points for a person in a clique named WAGS (ignoring letter case and surrounding spaces), 15 points for everyone else, with a half-life of 1825 days in both cases (5 × 365). A person without a clique counts as "everyone else". Ordinary wedding guests and flatmate periods do not earn points from this. The ranking is computed before pagination. The scoring metadata is not stored in the database and is recalculated on each read.
 
-`GET /api/people/browse?q=&page=0&size=20` zwraca `{content: [{person, visitCount, publicQuote}], page, size, totalElements, hasNext}`. `person` ma kształt dotychczasowego `HumanView`. Wyszukiwanie po imieniu i nazwisku traktuje `%` i `_` dosłownie, `page` jest nieujemne, `size` wynosi 1–100. Sortowanie działa na całym zbiorze przed stronicowaniem. Lista i endpoint `GET /api/people/browse/{id}/photo` wymagają uwierzytelnienia, lecz nie własności osoby. Dotychczasowe `GET /api/people?q=&limit=50` pozostaje bez zmian dla selektorów osób; zapis i zmiana zdjęcia nadal wymagają własności.
+`GET /api/people/browse/{id}/seen-with?limit=10` lists the people most often seen with the given person (`limit` 1–20, default 10) as `HumanView` objects, without point values. It uses only interactions in which both the given person and the account-linked Human take part, excludes both of them and the `my_exes` clique, and skips people with no points. Weights match `PeopleRanking`, except that a visit scores like a meeting (3 points, 360-day half-life). Joker: the spouse of the given person in an ongoing marriage (`weddings.is_divorced=false`, added by migration V20) gets a flat 40 points even without shared interactions. Ties follow the people directory order.
 
-| Ścieżka | GET | POST |
+`GET /api/people/browse?q=&page=0&size=20` returns `{content: [{person, visitCount, publicQuote}], page, size, totalElements, hasNext}`. `person` has the shape of the existing `HumanView`. The name search treats `%` and `_` literally, `page` is non-negative, and `size` is 1–100. Sorting covers the whole set before pagination. The list and `GET /api/people/browse/{id}/photo` require authentication, but not ownership of the person. The existing `GET /api/people?q=&limit=50` is unchanged for person pickers; writing and changing a photo still require ownership.
+
+| Path | GET | POST |
 | --- | --- | --- |
-| `/api/places` | Lista / wyszukiwanie miejsc | `name`, `latitude`, `longitude`, `category` |
-| `/api/cliques` | Lista / wyszukiwanie klik | `cliqueName`, `cliqueCapitalId` |
-| `/api/people` | Lista / wyszukiwanie ludzi | `name`, `surname`, `birthdayDate`, `fbLink`, `gender`, `livesIn`, `homeId`, `cliqueId` |
+| `/api/places` | List / search places | `name`, `latitude`, `longitude`, `category` |
+| `/api/cliques` | List / search cliques | `cliqueName`, `cliqueCapitalId` |
+| `/api/people` | List / search people | `name`, `surname`, `birthdayDate`, `fbLink`, `gender`, `livesIn`, `homeId`, `cliqueId` |
 
-GET przyjmuje `q` (fragment nazwy, bez rozróżniania wielkości liter) i `limit` (1–100, domyślnie 50). POST zwraca 201 i zapisany obiekt. Nieprawidłowe dane zwracają 400, nieistniejące lub cudze powiązanie 404. Opcjonalne powiązania pomiń lub przekaż jako `null`. Daty mają format `YYYY-MM-DD`. Wszystkie dane są filtrowane według zalogowanego właściciela.
+GET accepts `q` (part of a name, case-insensitive) and `limit` (1–100, default 50). POST returns 201 and the saved object. Invalid data returns 400, and a non-existent or foreign reference returns 404. Leave optional references out or pass `null`. Dates use the format `YYYY-MM-DD`. All data is filtered by the signed-in owner.
 
-Przykład kliki po utworzeniu miejsca o identyfikatorze 1:
+Example of a clique after creating a place with ID 1:
 
 ```json
-{ "cliqueName": "Przyjaciele", "cliqueCapitalId": 1 }
+{ "cliqueName": "Friends", "cliqueCapitalId": 1 }
 ```
 
-ID i UUID są generowane przez backend. Encje nie są bezpośrednio serializowane: DTO nie zawierają cyklicznych kolekcji. Członkostwo kliki jest reprezentowane przez `Human.clique`; nie przechowujemy drugiej kopii listy członków. Pola dla niezaimplementowanych jeszcze encji (zdjęcia, piosenki, interakcje, supermoce) zostaną dodane wraz z ich modelem. Punktacja interakcji docelowo należy do serwisu, nie encji człowieka.
+IDs and UUIDs are generated by the backend. Entities are not serialised directly: the DTOs contain no cyclic collections. Clique membership is represented by `Human.clique`; a second copy of the member list is not stored. Fields for entities not yet implemented (photos, songs, interactions, superpowers) will be added together with their models. The scoring of interactions should eventually belong to a service, not to the person entity.
 
-## Logowanie
+## Sign-in
 
-Przy pierwszym uruchomieniu lokalnego H2 powstaje osoba **Piotr Szkudlarek, ID 77** oraz powiązane konto **pszkudlarek**. Kolejne ID osób zaczynają się powyżej istniejącego maksimum. Inicjalizator nie nadpisze innej osoby pod ID 77 i nie zmieni hasła istniejącego konta. Dotychczasowe rekordy tej nowej bazy developerskiej bez właściciela są jednorazowo przypisywane temu kontu.
+On the first start of the local H2 database, the person **Piotr Szkudlarek, ID 77** and the linked account **pszkudlarek** are created. Further person IDs start above the existing maximum. The initialiser does not overwrite another person with ID 77 and does not change the password of an existing account. Existing records without an owner in this new development database are assigned to that account once.
 
-Losowe hasło startowe znajduje się wyłącznie w lokalnym `backend/data/initial-login.txt` (ignorowanym przez Git). Po zalogowaniu zmień hasło w interfejsie i usuń plik. Nie są importowane żadne rzeczywiste dane ani hasła ze starego Meetera. Inicjalizację można wyłączyć ustawiając `app.dev.bootstrap=false`.
+The random start-up password exists only in the local `backend/data/initial-login.txt` (ignored by Git). After signing in, change the password in the interface and delete the file. No real data or passwords from the old Meeter are imported. The initialisation can be disabled by setting `app.dev.bootstrap=false`.
 
-| Endpoint | Działanie |
+| Endpoint | Action |
 | --- | --- |
-| `GET /api/auth/csrf` | Pobranie tokenu CSRF i nazwy nagłówka; publiczne |
-| `POST /api/auth/login` | JSON `username`, `password`; publiczne, wymaga CSRF |
-| `GET /api/auth/me` | Aktualne konto i powiązana osoba |
-| `POST /api/auth/logout` | Unieważnienie bieżącego tokenu i usunięcie cookie |
-| `POST /api/auth/password` | `currentPassword`, `newPassword`; unieważnia wszystkie sesje konta |
+| `GET /api/auth/csrf` | Gets the CSRF token and the header name; public |
+| `POST /api/auth/login` | JSON `username`, `password`; public, requires CSRF |
+| `GET /api/auth/me` | The current account and the linked person |
+| `POST /api/auth/logout` | Invalidates the current token and removes the cookie |
+| `POST /api/auth/password` | `currentPassword`, `newPassword`; invalidates all sessions of the account |
 
-Token uwierzytelniający to 32 losowe bajty, wysyłane w cookie `HttpOnly`, `SameSite=Lax`, ścieżka `/api`, ważność 1 dzień (24 godziny od logowania), taka sama dla cookie i tokenu w bazie. Nowy czas dotyczy tokenów wystawionych po wdrożeniu; istniejące zachowują zapisany termin wygaśnięcia. Baza przechowuje wyłącznie SHA-256 tokenu. Hasła są przechowywane jako BCrypt z kosztem 12. Nowe hasło: co najmniej 12 znaków i najwyżej 72 bajty UTF-8. Tożsamość właściciela danych pochodzi z uwierzytelnienia, nigdy z JSON klienta.
+The authentication token is 32 random bytes, sent in an `HttpOnly`, `SameSite=Lax` cookie with path `/api`, valid for 7 days from sign-in. A request made with the token moves its expiry to 7 days from that request when the previous move was more than an hour earlier, and the response carries a refreshed cookie, so a user who signs in at least once a week stays signed in. The cookie and the token in the database have the same expiry. Tokens issued before this change are renewed on their first request. The database stores only the SHA-256 hash of the token. Passwords are stored as BCrypt with cost 12. A new password must be at least 12 characters and at most 72 bytes of UTF-8. The identity of the data owner comes from authentication, never from the client's JSON.
 
-Wszystkie operacje zmieniające dane wymagają nagłówka CSRF zgodnego z cookie. Frontend pobiera go automatycznie. Token uwierzytelniający nie trafia do localStorage ani odpowiedzi JSON. Pięć nieudanych prób na login blokuje go na 15 minut; dodatkowo obowiązuje limit 100 prób z adresu w tym oknie. Limiter jest w pamięci jednego procesu, więc resetuje się po restarcie; przy wielu instancjach należy przenieść go do współdzielonego magazynu.
+All operations that change data require a CSRF header matching the cookie. The frontend fetches it automatically. The authentication token never reaches localStorage or a JSON response. Five failed sign-in attempts block that login for 15 minutes; in addition, there is a limit of 100 attempts from one address within that window. The limiter lives in memory of a single process, so it resets on restart; with several instances it must be moved to shared storage.
 
-Backend jest przypięty do loopback. Dla wdrożenia HTTPS ustaw `app.auth.secure-cookie=true`, wyłącz lokalny bootstrap i zaplanuj migracje schematu, zarządzanie kontami oraz odzyskiwanie hasła. Obecnie nie ma publicznej rejestracji ani API nadawania ról.
+The backend is bound to loopback. For an HTTPS deployment, set `app.auth.secure-cookie=true`, disable the local bootstrap, and plan schema migrations, account management and password recovery. There is currently no public registration and no API for granting roles.
 
-## Testy
+## Tests
 
 ```powershell
 .\mvnw.cmd test
 ```
 
-Testy HTTP sprawdzają zapis powiązanych encji, wyszukiwanie, walidację współrzędnych, nazw, dat i adresów, błędne identyfikatory, limity wyników, logowanie, CSRF, izolację właścicieli, wygasłe tokeny, logout, zmianę hasła i limitowanie prób.
+The HTTP tests check saving linked entities, searching, validating coordinates, names, dates and addresses, invalid IDs, result limits, sign-in, CSRF, owner isolation, expired tokens, sign-out, password change and attempt limiting.
 
+The People tab uses `directory=true`, which limits the search results, the counts and the pages to people with a Social Score above 2. The score is used internally for filtering and sorting. The API and the UI omit the point values. A public quote has the form `{id, quote}` or `null`, and is drawn from the current author's public quotes.
 
-Zakładka Ludzie używa `directory=true`, które ogranicza wyniki wyszukiwania, liczniki i strony do osób z Social Score powyżej 2. Wynik służy wewnętrznie do filtrowania i sortowania. API i UI pomijają wartość punktów. Publiczny cytat ma postać `{id, quote}` lub `null`. Jest losowany spośród publicznych cytatów bieżącego autora.
-
-Osoby z kliki my_exes (nazwa bez względu na wielkość liter i skrajne spacje) są pomijane przed liczeniem wyników, wyszukiwaniem i paginacją, także dla administratorów. Katalogowy endpoint profilówki zwraca dla nich 404. Pozostałe interfejsy zachowują swoje wcześniejsze reguły. Przy takim samym wyniku kolejność wyznaczają nazwisko, imię i ID.
+People from the `my_exes` clique (name matched regardless of letter case and surrounding spaces) are skipped before counting, searching and pagination, including for administrators. The directory portrait endpoint returns 404 for them. Other interfaces keep their earlier rules. With equal scores, the order is set by surname, first name and ID.

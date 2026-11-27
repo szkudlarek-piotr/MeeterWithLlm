@@ -20,6 +20,24 @@ public class QuoteController {
         return service.get(id, publicOnly);
     }
 
+    public record VisibilityInput(boolean isPublic) {}
+
+    @GetMapping("/mine")
+    public QuoteService.AuthorPage mine(@RequestParam(defaultValue = "0") @Min(0) int page,
+                                        @RequestParam(defaultValue = "100") @Min(1) @Max(200) int size) {
+        return service.mine(page, size);
+    }
+
+    @PatchMapping("/{id}")
+    public View edit(@PathVariable @Positive Long id, @Valid @RequestBody EditInput input) {
+        return service.edit(id, input.quote());
+    }
+
+    @PatchMapping("/{id}/visibility")
+    public View visibility(@PathVariable @Positive Long id, @RequestBody VisibilityInput input) {
+        return service.setVisibility(id, input.isPublic());
+    }
+
     @PutMapping("/{id}/vote") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void vote(@PathVariable @Positive Long id, @Valid @RequestBody VoteInput input,
                      @CookieValue(name = PUBLIC_ONLY_COOKIE, defaultValue = "false") boolean publicOnly) {

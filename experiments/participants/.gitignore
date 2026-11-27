@@ -4,3 +4,7 @@ __pycache__/
 *.jsonl
 *.json
 *.joblib
+
+# Online per-account networks and any other trained weights never go to git
+*.pt
+*.pth

@@ -16,12 +16,17 @@ public class ParticipantHistory {
         var parameters = Map.of("owner", owner, "self", self);
         var rows = new LinkedHashMap<Long,Map<String,Object>>();
         jdbc.query("""
-            select i.id,i.name,i.start_date,coalesce(m.place_string,e.place_string,'') as place_text
+            select i.id,i.name,i.start_date,coalesce(m.place_string,e.place_string,'') as place_text,
+              case when m.id is not null then 'MEETING' when v.id is not null then 'VISIT' when e.id is not null then 'EVENT'
+                when t.id is not null then 'TRIP' when w.id is not null then 'WEDDING' else 'FLATMATE' end as interaction_type
             from interactions i left join meetings m on m.id=i.id left join events e on e.id=i.id
+              left join visits v on v.id=i.id left join trips t on t.id=i.id left join weddings w on w.id=i.id
             where i.created_by_id=:owner order by i.id
             """, parameters, rs -> {
                 while (rs.next()) {
                     var row = new HashMap<String,Object>();
+                    // id and type feed the online neural ranker; the shared models ignore both keys.
+                    row.put("id", rs.getLong("id")); row.put("type", rs.getString("interaction_type"));
                     row.put("name", rs.getString("name")); row.put("place_text", rs.getString("place_text"));
                     row.put("start_date", rs.getTimestamp("start_date").toLocalDateTime().toLocalDate().toString());
                     row.put("participants", new ArrayList<Long>()); row.put("places", new ArrayList<Map<String,Object>>());

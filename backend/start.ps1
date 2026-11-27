@@ -32,6 +32,21 @@ try {
         Write-Host "No build changes. Using existing JAR."
     }
 
+    # Flyway is the only thing that changes the schema (Hibernate uses ddl-auto=validate), so a new or
+    # changed migration file means the next start alters the database. Back up first; stop on any failure.
+    $migrations = @(Get-ChildItem -LiteralPath 'src/main/resources/db/migration' -Filter '*.sql' -File | Sort-Object Name)
+    $schemaFingerprint = ($migrations | ForEach-Object { $_.Name + ':' + (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }) -join "`n"
+    $schemaStamp = 'data/last-backup-schema.sha256'
+    $schemaCached = if (Test-Path -LiteralPath $schemaStamp) { Get-Content -LiteralPath $schemaStamp -Raw } else { '' }
+    if ($schemaCached -cne $schemaFingerprint) {
+        Write-Host "Database migrations changed since the last backup. Creating a backup before starting..."
+        # backup.ps1 needs DB_URL, DB_USER and DB_PASSWORD from this session and refuses to run while the backend is up.
+        & (Join-Path $PSScriptRoot '..\backup.ps1')
+        New-Item -ItemType Directory -Force -Path 'data' | Out-Null
+        # Written only after the backup succeeded, so a failed backup is retried on the next start.
+        $schemaFingerprint | Set-Content -LiteralPath $schemaStamp -NoNewline
+    }
+
     Write-Host "Starting Meeter..."
 
     & java `

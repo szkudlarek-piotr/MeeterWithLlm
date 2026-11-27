@@ -39,6 +39,6 @@ public class AuthController {
         return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, cookie("", 0)).build();
     }
     private String cookie(String token, long age) {
-        return ResponseCookie.from("meeterAuth", token).httpOnly(true).secure(secure).sameSite("Lax").path("/api").maxAge(age).build().toString();
+        return TokenAuthenticationFilter.setCookie(token, age, secure);
     }
 }

@@ -21,6 +21,7 @@ public class UuidPathVariables implements WebMvcConfigurer {
                 Map<String, String> translated = new HashMap<>(variables);
                 for (var item : variables.entrySet()) {
                     Kind kind = item.getKey().equals("humanId") ? Kind.HUMAN
+                        : item.getKey().equals("superpowerId") ? Kind.SUPERPOWER
                         : item.getKey().equals("id") ? pathKind(request.getRequestURI().substring(request.getContextPath().length())) : null;
                     if (kind != null) {
                         try { translated.put(item.getKey(), identifiers.internal(kind, item.getValue()).toString()); }
@@ -36,6 +37,8 @@ public class UuidPathVariables implements WebMvcConfigurer {
         if (path.startsWith("/api/people/")) return Kind.HUMAN;
         if (path.startsWith("/api/cliques/")) return Kind.CLIQUE;
         if (path.startsWith("/api/quotes/")) return Kind.QUOTE;
+        if (path.startsWith("/api/superpowers/")) return Kind.SUPERPOWER;
+        if (path.startsWith("/api/physical-activities/")) return Kind.ACTIVITY;
         if (path.startsWith("/api/quote-games/")) return Kind.GAME;
         if (path.matches("/api/(interactions|meetings|visits|events|trips|flatmates|weddings)/.*")) return Kind.INTERACTION;
         return null;
